@@ -1,0 +1,33 @@
+name: Bug
+description: Something in Sprout broke or showed the wrong result. https://github.com/busfyroman/sprout
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what Sprout showed. Do not paste your Amazon password or seller account.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Sprout version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: "Chrome 131 or Brave 1.73"
+    validations:
+      required: true
+  - type: textarea
+    id: seed
+    attributes:
+      label: Seed, marketplace, and department
+      description: Example — yoga mat, amazon.de, Books. Leave out anything private.
+    validations:
+      required: false

@@ -29,6 +29,7 @@ export interface SproutSettings {
 }
 
 export const STORAGE_KEY = 'sprout.v1'
+export const RATE_DISMISSED_KEY = 'sprout.rateDismissed'
 
 const MODES = new Set<ExpandMode>(['suffix', 'prefix', 'both'])
 const SORTS = new Set<SortKey>(['alpha', 'alpha-desc', 'shortest', 'longest', 'source'])
@@ -242,6 +243,17 @@ export function watchSettings(onChange: (settings: SproutSettings) => void): () 
   }
   chrome.storage.onChanged.addListener(listener)
   return () => chrome.storage.onChanged.removeListener(listener)
+}
+
+export async function loadRateDismissed(): Promise<boolean> {
+  if (!hasChromeStorage()) return false
+  const bag = await chrome.storage.local.get(RATE_DISMISSED_KEY)
+  return bag[RATE_DISMISSED_KEY] === true
+}
+
+export async function dismissRatePrompt(): Promise<void> {
+  if (!hasChromeStorage()) return
+  await chrome.storage.local.set({ [RATE_DISMISSED_KEY]: true })
 }
 
 function normalizeIds(value: unknown, fallback: string): string[] {

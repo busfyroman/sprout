@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sprout privacy policy</title>
+    <meta name="description" content="Sprout is a free browser extension for Amazon keyword research. It has no account and no tracking." />
+    <style>
+      :root { color-scheme: light; }
+      body { margin: 0; background: #f3efe6; color: #1c1915; font: 17px/1.55 "Segoe UI", ui-sans-serif, system-ui, sans-serif; }
+      main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+      h1 { font-size: 2rem; line-height: 1.15; margin: 0 0 0.4rem; }
+      h2 { font-size: 1.15rem; margin: 2rem 0 0.4rem; }
+      p, li { margin: 0.4rem 0; }
+      a { color: #1f6b45; }
+      .note { color: #6f685e; font-size: 0.95rem; }
+      code { font-size: 0.92em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Sprout privacy policy</h1>
+      <p class="note">Keyword expander for Amazon sellers. Not affiliated with Amazon. Last updated 21 November 2026.</p>
+      <p>Sprout is a free browser extension. It has no accounts, no ads, no analytics, and no server of its own. The developer does not receive the keywords you type.</p>
+
+      <h2>What stays on this device</h2>
+      <p>The seed, marketplace choices, department, expansion options, excluded words, search-term settings, starred keywords, the last 20 runs, and the latest result list are stored in <code>chrome.storage.local</code> on that browser profile. A one-time “rate Sprout” note, once dismissed, is also stored there so it is not shown again. Uninstalling the extension removes this data. There is no account and no sync.</p>
+      <p>Amazon result counts from a session stay in the open panel until you close it. They are labeled as result counts, not search volume, and they are not sent to the developer.</p>
+
+      <h2>What is sent, and where</h2>
+      <p>When you press Expand, Sprout requests public Amazon autocomplete from this browser. The query is the seed plus a letter, digit, or connector word. Requests go to:</p>
+      <ul>
+        <li><code>https://completion.amazon.&lt;marketplace&gt;/api/2017/suggestions</code></li>
+        <li>and, only if that host fails or does not return suggestion JSON, <code>https://www.amazon.&lt;marketplace&gt;/suggestions</code></li>
+      </ul>
+      <p>Those autocomplete requests do not attach cookies (<code>credentials: "omit"</code>). No other company receives the keyword from Sprout.</p>
+      <p>Two further Amazon page reads happen only when you ask, still in this browser:</p>
+      <ul>
+        <li><strong>Amazon result count.</strong> Results fetches <code>https://www.amazon.&lt;marketplace&gt;/s?k=…</code> for checked rows, or starred rows when none are checked, about one page per second. Cookies are omitted. Sprout reads the result-count line. The panel calls it a result count, not search volume. If the page is a robot check, counting stops.</li>
+        <li><strong>Related searches.</strong> On an Amazon page the panel reads the related-search block already in the page. One more level fetches up to three of those search pages from this browser. The page’s own request context is used, so Amazon cookies already in the browser may be included. Product titles and “Visit the … Store” names are read from the page you are on. They become buttons. Nothing is excluded until you click.</li>
+      </ul>
+      <p>Sprout does not read orders, reviews, payments, or your Amazon account. It does not request or store search volume, cost per click, or sales. It has no source for those numbers.</p>
+      <p>If you click Amazon, Google, or Trends on a keyword, the browser opens that site with the keyword in the link. That visit is between you and that site. Sprout does not observe it.</p>
+      <p>Translate, when you press it, uses Chrome’s on-device Translator if the browser provides it. Sprout does not send the seed to a translation service. If the API is missing, the translated field is only what you type.</p>
+
+      <h2>What the on-page panel reads</h2>
+      <p>On Amazon storefront pages where the panel is injected, Sprout reads the current URL, the search box, the department menu (<code>#searchDropdownBox</code>), the product title when that element is on the page, related-search links, and visible store or brand lines such as “Visit the … Store”. Those strings stay in the panel unless you choose to expand a term, which then uses the autocomplete requests above.</p>
+
+      <h2>Permissions</h2>
+      <ul>
+        <li><code>storage</code> — remember the last run and the dismissed rating note on this device.</li>
+        <li><code>sidePanel</code> — open the research panel beside the page.</li>
+        <li>Host access to <code>completion.amazon.*</code> and <code>www.amazon.*</code> for the marketplaces in the selector only — call the suggestion endpoints, show the panel on those storefronts, and, only when you ask, fetch a search results page to read a result count or a related-search block.</li>
+      </ul>
+      <p>Sprout does not request access to every website, to Seller Central, or to any host that is not an Amazon storefront or Amazon’s public suggestion host. The on-page script is the extension’s own code. Chrome lists it as a web-accessible resource limited to those Amazon storefronts so the page can load the panel.</p>
+
+      <h2>Contact</h2>
+      <p>Questions and feedback: <a href="https://github.com/busfyroman/sprout/issues">https://github.com/busfyroman/sprout/issues</a>. Source: <a href="https://github.com/busfyroman/sprout">https://github.com/busfyroman/sprout</a>. This page: <a href="https://busfyroman.github.io/sprout/privacy.html">https://busfyroman.github.io/sprout/privacy.html</a>.</p>
+    </main>
+  </body>
+</html>

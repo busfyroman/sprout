@@ -36,7 +36,8 @@ The injected panel loads its script from the extension package. Chrome therefore
 
 ## Contact
 
-Until this is published, the privacy contact is the person who loaded the extension. Host this note at a public URL before submitting to the Chrome Web Store, and paste that URL into the store privacy form.
+Feedback and questions: https://github.com/busfyroman/sprout/issues
+The public copy of this note is https://busfyroman.github.io/sprout/privacy.html. Paste that URL into the Chrome Web Store privacy form.
 
 ---
 
@@ -78,4 +79,5 @@ Vložený panel načíta svoj skript z balíka rozšírenia. Chrome preto tento 
 
 ## Kontakt
 
-Kým rozšírenie nie je zverejnené, kontaktom pre súkromie je človek, ktorý ho načítal. Pred odoslaním do Chrome Web Store umiestnite tento text na verejnú URL a tú vložte do formulára o súkromí.
+Spätná väzba: https://github.com/busfyroman/sprout/issues
+Verejná verzia tejto poznámky je https://busfyroman.github.io/sprout/privacy.html. Túto URL vložte do formulára o súkromí v Chrome Web Store.

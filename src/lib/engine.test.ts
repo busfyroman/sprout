@@ -9,7 +9,7 @@ import { parseSuggestionPayload, UnexpectedSuggestionError } from './parse'
 import { appendHistory, expandAllMarketplaces, hasPro, ProRequiredError } from './pro'
 import { buildQueries, countQueries, describePlan, sanitizeRestoredSeed } from './queries'
 import { addSuggestion, filterSuggestions, sortSuggestions } from './results'
-import { createClientContext, describeFailure, ProbeFailedError } from './suggest'
+import { createClientContext, describeFailure, isHostDown, ProbeFailedError, resetDownHosts } from './suggest'
 import { shouldRecordHistory } from './library'
 import { normalizeState } from './storage'
 import type { HistoryEntry, RunSnapshot, Suggestion } from './types'
@@ -18,18 +18,22 @@ import { buildXlsx } from './xlsx'
 describe('queries', () => {
   it('counts seed plus every letter and digit', () => {
     assert.equal(countQueries('suffix', false), 37)
-    assert.equal(countQueries('suffix', true), 73)
-    assert.equal(countQueries('both', true), 145)
-    assert.equal(buildQueries('yoga mat', 'suffix', true).length, 73)
+    assert.equal(countQueries('suffix', true), 37)
+    assert.equal(countQueries('both', true), 73)
+    assert.equal(buildQueries('yoga mat', 'suffix', true).length, 37)
+    const spaced = buildQueries('yoga mat', 'suffix', true).map((query) => query.text)
+    assert.ok(spaced.includes('yoga mat a'))
+    assert.equal(spaced.includes('yoga mata'), false)
     const both = buildQueries('yoga mat', 'both', true)
     assert.deepEqual(
       both.filter((query) => query.text.includes('a') && (query.text.startsWith('a') || query.text.endsWith('a') || query.text.includes(' a'))).map((query) => query.text),
-      ['yoga mata', 'yoga mat a', 'ayoga mat', 'a yoga mat'],
+      ['yoga mat a', 'a yoga mat'],
     )
   })
 
   it('describes the plan with the typed seed', () => {
-    assert.equal(describePlan('yoga mat', 'suffix', true).example, 'yoga mata · yoga mat a')
+    assert.equal(describePlan('yoga mat', 'suffix', true).example, 'yoga mat a')
+    assert.equal(describePlan('yoga mat', 'suffix', false).example, 'yoga mata')
   })
 })
 
@@ -329,11 +333,90 @@ describe('failed prefixes', () => {
   })
 })
 
+describe('stop and fallback hosts', () => {
+  it('aborts in-flight fetches and records the run as stopped', async () => {
+    let started = 0
+    const controller = new AbortController()
+    const client = createClientContext({
+      gapMs: 0,
+      maxGapMs: 0,
+      retries: 1,
+      backoffBaseMs: 0,
+      timeoutMs: 5000,
+      sleepFn: async () => {},
+      fetchImpl: (_input, init) => new Promise((resolve, reject) => {
+        started += 1
+        if (started === 1) {
+          resolve(json(['yoga mat thick']))
+          return
+        }
+        const timer = setTimeout(() => resolve(json(['yoga mat thick'])), 5000)
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(timer)
+          reject(new DOMException('The expansion was stopped.', 'AbortError'))
+        })
+      }),
+    })
+    const pending = expandSeed({
+      seed: 'yoga mat',
+      marketplace: getMarketplace('us'),
+      mode: 'suffix',
+      includeSpace: true,
+      signal: controller.signal,
+      client,
+      onProgress: () => {},
+    })
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    controller.abort()
+    const run = await pending
+    assert.equal(run.status, 'cancelled')
+    assert.match(run.warnings.join(' '), /Stopped/)
+    assert.ok(run.finishedQueries < run.totalQueries)
+  })
+
+  it('skips a completion host after the first 502', async () => {
+    resetDownHosts()
+    let completionHits = 0
+    const client = createClientContext({
+      gapMs: 0,
+      maxGapMs: 0,
+      retries: 3,
+      backoffBaseMs: 0,
+      timeoutMs: 5000,
+      sleepFn: async () => {},
+      fetchImpl: async (input) => {
+        const url = String(input)
+        if (url.includes('completion.amazon.in')) {
+          completionHits += 1
+          return new Response('<html>502</html>', { status: 502 })
+        }
+        return json(['yoga mat cover'])
+      },
+    })
+    const run = await expandSeed({
+      seed: 'yoga',
+      marketplace: getMarketplace('in'),
+      mode: 'suffix',
+      includeSpace: false,
+      signal: new AbortController().signal,
+      client,
+      onProgress: () => {},
+    })
+    assert.equal(run.status, 'done')
+    assert.equal(run.usedFallback, true)
+    assert.equal(completionHits, 1)
+    assert.equal(isHostDown('completion.amazon.in'), true)
+    resetDownHosts()
+  })
+})
+
 describe('restore and history policy', () => {
   it('drops the old placeholder seed and records failed runs', () => {
     assert.equal(sanitizeRestoredSeed('yoga mat, low content book, funny nurse'), '')
     assert.equal(sanitizeRestoredSeed('yoga mat, low content book, funny nurse…'), '')
     assert.equal(sanitizeRestoredSeed('yoga mat'), 'yoga mat')
+    assert.equal(sanitizeRestoredSeed('yoga '), 'yoga ')
+    assert.equal(sanitizeRestoredSeed('yoga  mat'), 'yoga mat')
     assert.equal(buildExportRows(
       [{ key: 'yoga mat', value: 'yoga mat', sources: [], marketplaces: ['us', 'uk'] }],
       { seed: 'yoga mat', marketplace: 'United States; United Kingdom', domain: 'amazon.com' },

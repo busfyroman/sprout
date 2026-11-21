@@ -1,5 +1,6 @@
 import { defineManifest } from '@crxjs/vite-plugin'
 import { MARKETPLACES } from './src/lib/marketplaces'
+import { EXTENSION_DESCRIPTION, EXTENSION_NAME } from './src/project'
 
 const hostPermissions = [...new Set(MARKETPLACES.flatMap((marketplace) => [
   `https://${marketplace.completionHost}/*`,
@@ -10,13 +11,13 @@ const contentMatches = MARKETPLACES.map((marketplace) => `https://${marketplace.
 
 export default defineManifest({
   manifest_version: 3,
-  name: 'Sprout — Amazon Suggestion Expander',
+  name: EXTENSION_NAME,
   short_name: 'Sprout',
-  version: '0.3.0',
-  description: 'Turn one Amazon seed into a–z and 0–9 autocomplete suggestions for seller, KDP, and Merch research.',
+  version: '1.0.0',
+  description: EXTENSION_DESCRIPTION,
   minimum_chrome_version: '120',
   action: {
-    default_title: 'Sprout — Amazon suggestions',
+    default_title: 'Sprout – keyword research',
     default_popup: 'src/popup/index.html',
     default_icon: {
       16: 'src/assets/icons/icon16.png',
@@ -43,6 +44,9 @@ export default defineManifest({
   },
   permissions: ['storage', 'sidePanel'],
   host_permissions: hostPermissions,
+  content_security_policy: {
+    extension_pages: "script-src 'self'; object-src 'self'",
+  },
   content_scripts: [
     {
       matches: contentMatches,

@@ -128,6 +128,7 @@ export async function expandSelectedMarketplaces(
           endpointLabel = run.endpointLabel
           usedFallback = usedFallback || run.usedFallback
           finishedQueries = index * perMarket + run.finishedQueries
+          if (input.signal.aborted && run.status === 'running') return
           emit({
             suggestions: [...view.values()],
             finishedQueries,
@@ -136,8 +137,8 @@ export async function expandSelectedMarketplaces(
             endpointLabel: run.endpointLabel,
             usedFallback,
             recentLabel: selected.length > 1 ? `${marketplace.code} · ${run.recentLabel}` : run.recentLabel,
-            warnings,
-          }, 'running')
+            warnings: run.status === 'cancelled' ? run.warnings : warnings,
+          }, input.signal.aborted || run.status === 'cancelled' ? 'cancelled' : 'running')
         },
       })
       for (const suggestion of result.suggestions) mergeSuggestion(combined, suggestion)

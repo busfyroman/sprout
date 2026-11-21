@@ -74,7 +74,7 @@ export interface SproutState {
   sort: SortKey
   run: RunSnapshot | null
   runLock: RunLock | null
-  /** Kept in memory. Full runs live in IndexedDB, not in this blob. */
+  /** Mirrored from chrome.storage so every Sprout surface shares the same runs. */
   history: HistoryEntry[]
   savedKeywords: SavedKeyword[]
   excludedWords: string[]

@@ -18,20 +18,25 @@ export function parseResultCount(html: string): { count: number | null; blocked:
       message: 'Amazon asked for a robot check. Result counting stopped. Open Amazon in this browser, pass the check, then try the selected rows again.',
     }
   }
-  const patterns = [
-    /of\s+(?:over|more than)\s+([\d,]+)\s+results/i,
-    /of\s+([\d,]+)\s+results/i,
-    /von\s+(?:über|mehr als)\s+([\d.]+)\s+Ergebniss/i,
-    /von\s+([\d.]+)\s+Ergebniss/i,
-    /sur\s+([\d\s\u00a0]+)\s+résultats/i,
-    /di\s+([\d.]+)\s+risultat/i,
-    /de\s+(?:más de\s+)?([\d.]+)\s+resultados/i,
-    /([\d,]+)\s*件(?:以上)?/,
+  const patterns: Array<{ pattern: RegExp; group: number }> = [
+    { pattern: /\d[\d,]*\s*[-–]\s*\d[\d,]*\s+of\s+(?:over|more than)\s+([\d,]+)\s+results/i, group: 1 },
+    { pattern: /\d[\d,]*\s*[-–]\s*\d[\d,]*\s+of\s+([\d,]+)\s+results/i, group: 1 },
+    { pattern: /(?:over|more than)\s+([\d,]+)\s+results/i, group: 1 },
+    { pattern: /([\d,]+)\s+results?\s+for\b/i, group: 1 },
+    { pattern: /of\s+(?:over|more than)\s+([\d,]+)\s+results/i, group: 1 },
+    { pattern: /of\s+([\d,]+)\s+results/i, group: 1 },
+    { pattern: /von\s+(?:über|mehr als)\s+([\d.]+)\s+Ergebniss/i, group: 1 },
+    { pattern: /von\s+([\d.]+)\s+Ergebniss/i, group: 1 },
+    { pattern: /sur\s+([\d\s\u00a0]+)\s+résultats/i, group: 1 },
+    { pattern: /di\s+([\d.]+)\s+risultat/i, group: 1 },
+    { pattern: /de\s+(?:más de\s+)?([\d.]+)\s+resultados/i, group: 1 },
+    { pattern: /([\d,]+)\s*件(?:以上)?/, group: 1 },
   ]
-  for (const pattern of patterns) {
+  for (const { pattern, group } of patterns) {
     const match = html.match(pattern)
-    if (!match?.[1]) continue
-    const count = Number(match[1].replace(/[.\s\u00a0]/g, '').replace(/,/g, ''))
+    const raw = match?.[group]
+    if (!raw) continue
+    const count = Number(raw.replace(/[.\s\u00a0]/g, '').replace(/,/g, ''))
     if (Number.isFinite(count)) {
       return { count, blocked: false, message: `${count.toLocaleString()} Amazon results. This is a result count, not search volume.` }
     }

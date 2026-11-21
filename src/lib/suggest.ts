@@ -3,7 +3,21 @@ import { REQUEST_LIMITS } from './limits'
 import type { Marketplace } from './marketplaces'
 import { parseSuggestionPayload, UnexpectedSuggestionError } from './parse'
 
-const RETRYABLE_STATUS = new Set([403, 408, 425, 429, 500, 502, 503, 504])
+const RETRYABLE_STATUS = new Set([403, 408, 425, 429, 500, 503, 504])
+const downHosts = new Set<string>()
+
+/** A completion host that answered 502 stays down for this browser session. */
+export function rememberDownHost(host: string): void {
+  downHosts.add(host)
+}
+
+export function isHostDown(host: string): boolean {
+  return downHosts.has(host)
+}
+
+export function resetDownHosts(): void {
+  downHosts.clear()
+}
 
 export interface SuggestionBatch {
   values: string[]
@@ -175,6 +189,13 @@ export async function fetchBatch(
   const host = endpointHost(marketplace, endpoint)
   const url = suggestionUrl(marketplace, prefix, endpoint, alias)
   let lastError: AmazonSuggestError | null = null
+  if (isHostDown(host)) {
+    throw new AmazonSuggestError(`${host} failed earlier in this session. Sprout is using the other Amazon endpoint.`, {
+      host,
+      status: 502,
+      kind: 'http',
+    })
+  }
 
   for (let attempt = 0; attempt < ctx.retries; attempt++) {
     await ctx.pacer.wait(signal)
@@ -188,6 +209,10 @@ export async function fetchBatch(
       }
       if (!(error instanceof AmazonSuggestError)) throw error
       lastError = error
+      if (error.status === 502) {
+        rememberDownHost(host)
+        throw error
+      }
       const retryable = error.kind === 'network' || (error.kind === 'http' && error.status != null && RETRYABLE_STATUS.has(error.status))
       if (!retryable || attempt === ctx.retries - 1) throw error
       ctx.pacer.penalize()

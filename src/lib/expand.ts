@@ -106,6 +106,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
       emit({ ...snapshot, recentLabel: query.label })
       try {
         const batch = await fetchPreferred(input.marketplace, query.text, endpoint, input.signal, client, alias)
+        if (input.signal.aborted) throw new DOMException('The expansion was stopped.', 'AbortError')
         if (batch.endpoint !== endpoint) laterFallback = true
         addQuerySuggestions(suggestions, query, batch.values, input.marketplace.id)
       } catch (error) {
@@ -118,6 +119,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
         if (!input.signal.aborted) publish('running', { recentLabel: query.label })
       }
     }, input.signal)
+    if (input.signal.aborted) throw new DOMException('The expansion was stopped.', 'AbortError')
 
     if (failedQueries === queries.length || (suggestions.size === 0 && failedQueries > 0 && finishedQueries === queries.length)) {
       const listed = failedPrefixes.length > 0 ? ` Failed prefixes: ${formatFailedPrefixes(failedPrefixes)}.` : ''
@@ -187,6 +189,7 @@ async function probeSeed(
   alias: string,
 ): Promise<{ endpoint: EndpointKind; batch: SuggestionBatch; usedFallback: boolean }> {
   try {
+    if (signal.aborted) throw new DOMException('The expansion was stopped.', 'AbortError')
     const primary = await fetchBatch(marketplace, query.text, 'completion', signal, client, alias)
     if (primary.values.length > 0) {
       return { endpoint: 'completion', batch: primary, usedFallback: false }
@@ -282,13 +285,21 @@ async function runPool<T>(
 ): Promise<void> {
   if (items.length === 0) return
   let cursor = 0
+  let stopError: unknown = null
   const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (!signal.aborted) {
+    while (!signal.aborted && stopError == null) {
       const index = cursor
       cursor += 1
       if (index >= items.length) return
-      await worker(items[index])
+      try {
+        await worker(items[index])
+      } catch (error) {
+        stopError = error
+        return
+      }
     }
   })
   await Promise.all(runners)
+  if (stopError) throw stopError
+  if (signal.aborted) throw new DOMException('The expansion was stopped.', 'AbortError')
 }

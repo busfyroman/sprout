@@ -28,6 +28,7 @@ export function suggestionUrl(
     const params = new URLSearchParams({
       mid: marketplace.mid,
       alias,
+      'search-alias': alias,
       prefix,
       'suggestion-type': 'KEYWORD',
       limit: '11',
@@ -45,6 +46,7 @@ export function suggestionUrl(
 
   const params = new URLSearchParams({
     alias,
+    'search-alias': alias,
     prefix,
     mid: marketplace.mid,
     lop: marketplace.locale,

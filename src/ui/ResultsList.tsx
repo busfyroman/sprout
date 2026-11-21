@@ -31,6 +31,7 @@ export function ResultsList({
   onExpand,
   positionLabel,
   resultLabel,
+  resultTitle,
   similar,
 }: {
   items: Suggestion[]
@@ -50,6 +51,7 @@ export function ResultsList({
   onExpand?: (item: Suggestion) => void
   positionLabel?: (item: Suggestion) => string
   resultLabel?: (item: Suggestion) => string
+  resultTitle?: (item: Suggestion) => string
   similar?: (item: Suggestion) => boolean
 }) {
   const selectedVisible = items.filter((item) => selected.includes(item.key)).length
@@ -129,7 +131,7 @@ export function ResultsList({
                     <span className="min-w-0 flex-1 truncate text-[13px]" title={item.value}>
                       {item.value}
                       {similar?.(item) ? <span className="ml-1 text-[10px] text-clay">similar</span> : null}
-                      {resultLabel?.(item) ? <span className="ml-1 text-[10px] text-muted">{resultLabel(item)}</span> : null}
+                      {resultLabel?.(item) ? <span className="ml-1 text-[10px] text-muted" title={resultTitle?.(item) || 'Amazon result count, not search volume.'}>{resultLabel(item)}</span> : null}
                     </span>
                     {positionLabel ? <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted">{positionLabel(item)}</span> : null}
                     {onExpand ? (

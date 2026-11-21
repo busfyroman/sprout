@@ -212,6 +212,9 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
   const start = useCallback(async (override?: { seed?: string; depth?: number }) => {
     const current = stateRef.current
     if (current.run?.status === 'running' && current.runLock?.ownerId === ownerId.current) return
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     const depth = override?.depth ?? 0
     if (depth > 2) {
       setNotice('Expand this stops at depth 2 so one phrase cannot crawl forever.')
@@ -221,8 +224,9 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     const seed = !override?.seed && current.useTranslatedSeed && current.translatedSeed.trim()
       ? cleanSeed(current.translatedSeed)
       : typed
-    if (!seed) return
+    if (!seed || controller.signal.aborted) return
     const fresh = await loadState()
+    if (controller.signal.aborted) return
     if (
       fresh.runLock &&
       fresh.runLock.ownerId !== ownerId.current &&
@@ -231,8 +235,6 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
       setNotice('Sprout is already expanding a keyword in another panel.')
       return
     }
-    const controller = new AbortController()
-    abortRef.current = controller
     setNotice(null)
     setFilter('')
     const marketplaceIds = (current.selectedMarketplaceIds.length > 0 ? current.selectedMarketplaceIds : [current.marketplaceId])
@@ -284,6 +286,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
         depth,
         signal: controller.signal,
         onProgress: (run) => {
+          if (controller.signal.aborted && run.status === 'running') return
           const latest = stateRef.current
           const settled = run.status !== 'running'
           persist(
@@ -316,7 +319,22 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
 
   const stop = useCallback(() => {
     abortRef.current?.abort()
-  }, [])
+    const current = stateRef.current
+    if (current.run?.status !== 'running') return
+    persist({
+      ...current,
+      runLock: null,
+      run: {
+        ...current.run,
+        status: 'cancelled',
+        finishedAt: Date.now(),
+        error: null,
+        warnings: [
+          `Stopped early at ${current.run.finishedQueries} of ${current.run.totalQueries} prefixes. Kept ${current.run.suggestions.length} suggestions.`,
+        ],
+      },
+    }, true)
+  }, [persist])
 
   return {
     state,

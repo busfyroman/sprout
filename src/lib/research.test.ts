@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { adsCsv, buildKdpBoxes, classifyPosition, connectorWords, matchesWordCount, nearDuplicateKeys } from './analysis'
 import { suggestionUrl } from './endpoints'
+import { exportBasename } from './export'
 import { getMarketplace } from './marketplaces'
 import { readPageIntel } from './page-intel'
 import { buildQueries, countQueries } from './queries'
@@ -21,6 +22,11 @@ test('department alias is sent on the completion URL', () => {
   assert.match(url, /completion\.amazon\.in/)
   assert.match(url, /mid=A21TJRUUN4KGV/)
   assert.match(url, /alias=stripbooks/)
+  assert.match(url, /search-alias=stripbooks/)
+  const storefront = suggestionUrl(getMarketplace('us'), 'yoga book', 'storefront', 'stripbooks')
+  assert.match(storefront, /www\.amazon\.com\/suggestions/)
+  assert.match(storefront, /alias=stripbooks/)
+  assert.match(storefront, /search-alias=stripbooks/)
 })
 
 test('position is relative to the seed', () => {
@@ -47,6 +53,9 @@ test('KDP boxes stay within 50 characters and skip title words', () => {
 test('result count parser never calls a count search volume', () => {
   const parsed = parseResultCount('<span>1-16 of over 2,000 results for yoga mat</span>')
   assert.equal(parsed.count, 2000)
+  assert.equal(parseResultCount('<span>7 results for <span>zero sugar yogurt drink</span></span>').count, 7)
+  assert.equal(parseResultCount('<span>1-48 of 48 results</span>').count, 48)
+  assert.match(parseResultCount('<html><body>no count here</body></html>').message, /did not show a result count/)
   assert.match(parsed.message, /not search volume/)
   const blocked = parseResultCount('<form action="/errors/validateCaptcha">Type the characters you see</form>')
   assert.equal(blocked.blocked, true)
@@ -58,14 +67,30 @@ test('page intel reads related searches and store names', () => {
     <select id="searchDropdownBox"><option selected value="search-alias=stripbooks">Books</option></select>
     <span id="productTitle">Funny Nurse Notebook</span>
     <a id="bylineInfo">Visit the Paperbird Store</a>
-    <h2>Related searches</h2><a>nurse notebook</a><a>funny gift</a>
+    <div id="brandsRefinements"><span class="a-size-base a-color-base a-text-bold">Brand</span><span class="a-size-base a-color-base">Gaiam</span><span class="a-size-base a-color-base">Manduka</span></div>
+    <h2>Related searches</h2>
+    <a href="/s?k=yoga"><img alt="yoga accessories">yoga</a>
+    <a href="/s?k=exercise+mat">exercise mat</a>
+    <a href="/s?k=yoga+block">yoga block</a>
+    <a href="/s?k=workout+mat">workout mat</a>
+    <a href="/s?k=yoga+mats+for+home+workout">yoga mats for home workout</a>
+    <a href="/s?k=yoga+towel">yoga towel</a>
+    <a href="/dp/B000000">yoga accessories</a>
   `
   const intel = readPageIntel(html)
   assert.equal(intel.departmentAlias, 'stripbooks')
   assert.equal(intel.productTitle, 'Funny Nurse Notebook')
   assert.ok(intel.brands.includes('Paperbird'))
-  assert.ok(intel.related.includes('nurse notebook'))
+  assert.ok(intel.brands.includes('Gaiam'))
+  assert.ok(intel.brands.includes('Manduka'))
+  assert.deepEqual(intel.related, ['yoga', 'exercise mat', 'yoga block', 'workout mat', 'yoga mats for home workout', 'yoga towel'])
+  assert.equal(intel.related.includes('yoga accessories'), false)
   assert.equal(JSON.stringify(intel).toLowerCase().includes('reverse asin'), false)
+})
+
+test('ads export filename keeps the seed spaces and does not repeat ads', () => {
+  assert.equal(exportBasename('yoga mat', 'ads'), 'sprout-yoga-mat-ads')
+  assert.equal(`${exportBasename('yoga mat', 'ads')}.csv`.includes('ads-ads'), false)
 })
 
 test('ads export uses the bulk sheet columns', () => {

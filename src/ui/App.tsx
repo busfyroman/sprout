@@ -1,5 +1,5 @@
 import { Copy, PanelRight, Sprout, Table2, X } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { adsCsv, classifyPosition, connectorWords, matchesWordCount, nearDuplicateKeys } from '../lib/analysis'
 import { DEPARTMENTS } from '../lib/departments'
 import { buildCsv, buildWorkbook, copyText, downloadBytes, downloadText, exportBasename, keywordsToCopy } from '../lib/export'
@@ -8,7 +8,10 @@ import { readPageIntel, type PageIntel } from '../lib/page-intel'
 import { fetchResultCount, type ResultCount } from '../lib/result-count'
 import { languageFromLocale, translateOnDevice } from '../lib/translate'
 import { hasPro } from '../lib/pro'
-import { describePlan } from '../lib/queries'
+import { openExternal, PROJECT, storeReviewUrl } from '../project'
+import { shouldShowRatePrompt } from '../lib/rate'
+import { dismissRatePrompt, loadRateDismissed, RATE_DISMISSED_KEY } from '../lib/storage'
+import { cleanSeed, describePlan } from '../lib/queries'
 import { applyExclusions, filterSuggestions, sortSuggestions } from '../lib/results'
 import { parseWordList } from '../lib/search-terms'
 import type { ExpandMode } from '../lib/types'
@@ -46,6 +49,22 @@ export function App({
   onCollapse?: () => void
 }) {
   const research = useResearch({ pageSeed, pageMarketplaceId, pageDepartment: pageIntel?.departmentAlias })
+  useEffect(() => {
+    let gone = false
+    void loadRateDismissed().then((dismissed) => {
+      if (!gone) setRateDismissed(dismissed)
+    })
+    if (!chrome.storage?.onChanged) return () => { gone = true }
+    const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
+      if (area !== 'local' || !changes[RATE_DISMISSED_KEY]) return
+      setRateDismissed(changes[RATE_DISMISSED_KEY].newValue === true)
+    }
+    chrome.storage.onChanged.addListener(listener)
+    return () => {
+      gone = true
+      chrome.storage.onChanged.removeListener(listener)
+    }
+  }, [])
   const [tab, setTab] = useState<PanelTab>('results')
   const [marketsOpen, setMarketsOpen] = useState(false)
   const [excludeDraft, setExcludeDraft] = useState('')
@@ -54,6 +73,7 @@ export function App({
   const [counting, setCounting] = useState(false)
   const [exactCount, setExactCount] = useState(false)
   const [extraRelated, setExtraRelated] = useState<string[]>([])
+  const [rateDismissed, setRateDismissed] = useState(true)
   const countRun = useRef(0)
   const { state, ready } = research
   const plan = describePlan(
@@ -206,6 +226,10 @@ export function App({
     return `${hit.count.toLocaleString()} results`
   }
 
+  function rowCountTitle(item: { key: string }): string {
+    return counts[item.key]?.message || 'Amazon result count, not search volume.'
+  }
+
   function isSimilar(item: { value: string }): boolean {
     return similarKeys.has(item.value.trim().replace(/\s+/g, ' ').toLowerCase())
   }
@@ -287,7 +311,7 @@ export function App({
           </span>
           <div className="min-w-0">
             <div className="wordmark text-[22px] leading-none">Sprout</div>
-            <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">Amazon suggestions</div>
+            <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">For Amazon sellers</div>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -498,6 +522,7 @@ export function App({
 
       {run && run.status !== 'running' && tab === 'results' && (
         <p className="px-3 pt-2 text-[11px] text-muted">
+          {run.status === 'cancelled' ? 'Stopped. ' : ''}
           {run.seed !== state.seed.trim() ? `Showing “${run.seed}”. ` : ''}
           {formatWhen(run.finishedAt ?? run.startedAt)}
           {' · '}
@@ -549,7 +574,11 @@ export function App({
                 )}
                 {pageIntel.brands.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    {pageIntel.brands.map((brand) => (
+                    <span className="w-full text-[10px] text-muted">Brands on this page</span>
+                    {pageIntel.brands.filter((brand) => {
+                      const draft = excludeDraft.trim().toLowerCase()
+                      return !draft || brand.toLowerCase().includes(draft)
+                    }).map((brand) => (
                       <button
                         key={brand}
                         type="button"
@@ -559,6 +588,9 @@ export function App({
                         Exclude {brand}
                       </button>
                     ))}
+                    {excludeDraft.trim() && pageIntel.brands.every((brand) => !brand.toLowerCase().includes(excludeDraft.trim().toLowerCase())) && (
+                      <span className="text-[10px] text-muted">No brand on this page matches “{excludeDraft.trim()}”.</span>
+                    )}
                   </div>
                 )}
                 {pageIntel.related.length > 0 && (
@@ -603,6 +635,7 @@ export function App({
             onExpand={(item) => void research.start({ seed: item.value, depth: (run?.depth ?? 0) + 1 })}
             positionLabel={rowPosition}
             resultLabel={rowCount}
+            resultTitle={rowCountTitle}
             similar={isSimilar}
           />
         )}
@@ -628,6 +661,7 @@ export function App({
             onExpand={(item) => void research.start({ seed: item.value, depth: (run?.depth ?? 0) + 1 })}
             positionLabel={rowPosition}
             resultLabel={rowCount}
+            resultTitle={rowCountTitle}
             similar={isSimilar}
           />
         )}
@@ -673,6 +707,35 @@ export function App({
         )}
       </div>
 
+      {shouldShowRatePrompt(state.history.filter((item) => item.run?.status === 'done').length, rateDismissed) && !running && (
+        <div className="mx-3 mb-2 rounded-lg border border-line bg-sand px-2.5 py-2 text-[11px] leading-snug text-ink">
+          <p>Three finished runs are saved on this device. A store rating helps other sellers find Sprout. This note stays dismissed.</p>
+          <div className="mt-1.5 flex gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setRateDismissed(true)
+                void dismissRatePrompt()
+                openExternal(storeReviewUrl())
+              }}
+            >
+              Rate Sprout
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setRateDismissed(true)
+                void dismissRatePrompt()
+              }}
+            >
+              Not now
+            </Button>
+          </div>
+        </div>
+      )}
       <footer className="relative z-10 shrink-0 border-t border-line bg-cream px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-1.5">
           <Button type="button" size="sm" onClick={() => void onCopy()} disabled={exportCount === 0} className={copyState === 'done' ? 'bg-moss hover:bg-moss' : ''}>
@@ -687,8 +750,9 @@ export function App({
             variant="outline"
             disabled={exportCount === 0}
             onClick={() => {
-              const text = adsCsv(exportItems.map((item) => item.value), state.seed || 'Sprout', state.seed || 'Sprout', 'Exact')
-              downloadText(`${exportBasename(state.seed || 'sprout', 'ads')}-ads.csv`, text, 'text/csv;charset=utf-8')
+              const campaign = cleanSeed(run?.seed || state.seed) || 'Sprout'
+              const text = adsCsv(exportItems.map((item) => item.value), campaign, campaign, 'Exact')
+              downloadText(`${exportBasename(campaign, 'ads')}.csv`, text, 'text/csv;charset=utf-8')
             }}
           >
             Ads
@@ -715,7 +779,11 @@ export function App({
         </div>
         <p className="mt-1.5 text-[10px] leading-snug text-muted">
           {selectedItems.length > 0 ? 'Copy and export use the checked rows.' : 'Copy and export use the visible list.'}
-          {' '}Amazon results is a page count, not search volume. Everything stays in this browser.
+          {' '}Amazon results is a page count, not search volume. Not affiliated with Amazon.
+          {' '}
+          <button type="button" className="underline decoration-line underline-offset-2 hover:text-ink" onClick={() => openExternal(PROJECT.issuesUrl)}>Feedback</button>
+          {' · '}
+          <button type="button" className="underline decoration-line underline-offset-2 hover:text-ink" onClick={() => openExternal(PROJECT.privacyUrl)}>Privacy</button>
         </p>
       </footer>
     </div>

@@ -2,7 +2,7 @@ import { Sprout } from 'lucide-react'
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { readMarketplace, readPageSeed } from '../lib/page-context'
-import { readPageIntel, type PageIntel } from '../lib/page-intel'
+import { readLivePageIntel, type PageIntel } from '../lib/page-intel'
 import cssText from '../styles/globals.css?inline'
 import { App } from '../ui/App'
 
@@ -64,7 +64,7 @@ function Overlay() {
           type="button"
           onClick={() => {
             const seed = currentSeed()
-            const page = readPageIntel(document.documentElement.innerHTML)
+            const page = readLivePageIntel(document)
             setIntel({ ...page, departmentAlias: liveDepartment() ?? page.departmentAlias })
             setLiveSeed(seed)
             setSessionSeed((current) => current ?? seed)

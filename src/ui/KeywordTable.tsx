@@ -31,6 +31,7 @@ export function KeywordTable({
   onExpand,
   positionLabel,
   resultLabel,
+  resultTitle,
   similar,
 }: {
   items: Suggestion[]
@@ -49,6 +50,7 @@ export function KeywordTable({
   onExpand?: (item: Suggestion) => void
   positionLabel?: (item: Suggestion) => string
   resultLabel?: (item: Suggestion) => string
+  resultTitle?: (item: Suggestion) => string
   similar?: (item: Suggestion) => boolean
 }) {
   const selectedVisible = items.filter((item) => selected.includes(item.key)).length
@@ -124,7 +126,7 @@ export function KeywordTable({
                     ) : null}
                   </td>
                   <td className="px-2 py-1.5 text-[11px] uppercase text-muted">{positionLabel?.(item) ?? ''}</td>
-                  <td className="px-2 py-1.5 text-[11px] text-muted" title="Amazon result count, not search volume">{resultLabel?.(item) ?? ''}</td>
+                  <td className="px-2 py-1.5 text-[11px] text-muted" title={resultTitle?.(item) || 'Amazon result count, not search volume.'}>{resultLabel?.(item) ?? ''}</td>
                   <td className="px-2 py-1.5 text-[11px] text-muted">{markets.map((id) => getMarketplace(id).code).join(' ')}</td>
                   <td className="px-2 py-1.5 font-mono text-[10px] text-muted">{item.sources.slice(0, 4).map((source) => source.label).join(' ')}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-[11px]">

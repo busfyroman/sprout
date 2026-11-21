@@ -1,0 +1,18 @@
+name: Feature request
+description: A change that would make keyword research easier. https://github.com/busfyroman/sprout
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is hard today
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you would like Sprout to do
+      description: Sprout stays free, local, and without invented search volume or CPC.
+    validations:
+      required: true

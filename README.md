@@ -1,10 +1,28 @@
-# Sprout — Amazon Suggestion Expander
+# Sprout
 
-Sprout turns one seed keyword into the autocomplete list Amazon shoppers see, then walks every letter and digit so sellers, KDP authors, and Merch designers can collect long-tail variations in one pass.
+Sprout is a free Chrome and Brave extension for Amazon keyword research. One seed becomes the autocomplete list shoppers see, then every letter and digit. It is for sellers, KDP authors, and Merch designers.
 
-The working name was Amazon Suggestion Expander. The extension is **Sprout**. The Chrome Web Store title keeps both: “Sprout — Amazon Suggestion Expander”.
+Sprout is not affiliated with Amazon. Amazon is a trademark of Amazon.com, Inc. There is no account, no tracking, and no invented search volume, CPC, or sales.
 
-It does not estimate search volume, and it does not ask for an Amazon account.
+Source and feedback: https://github.com/busfyroman/sprout
+Privacy policy: https://busfyroman.github.io/sprout/privacy.html
+
+## Install
+
+From the Chrome Web Store, after the listing is published: search for **Sprout – Amazon Keyword Research for Sellers**. The package is free.
+
+Unpacked, from a git checkout:
+
+```bash
+npm install
+npm run build
+```
+
+Load `dist/` at `chrome://extensions` or `brave://extensions` with Developer mode on. Choose **Load unpacked**. Pin Sprout from the puzzle-piece menu. The same steps in Slovak are below.
+
+A store upload zip, with `manifest.json` at the root of the archive, is `npm run package:cws`.
+
+![Expanding yoga mat on amazon.com. The list is Amazon autocomplete, not search volume.](store/screenshots/01-expand.png)
 
 ## English
 
@@ -55,7 +73,7 @@ Chrome is the same flow at `chrome://extensions`.
 - **Side panel.** Click **Panel** in the popup, or open Brave’s side panel and choose Sprout. The run keeps going if you switch tabs. The popup closes when you leave it, so use the side panel for a long pass.
 - **On an Amazon search page.** A pill sits at the bottom-right. It reads the current search (`k` or `field-keywords` in the URL, otherwise the search box). Click it to expand that term on the matching marketplace.
 
-Default pass: the seed, then the seed with each `a–z` and `0–9` glued on (`yoga mata`), and the same letters after a space (`yoga mat a`). Prefix mode does `ayoga mat` and `a yoga mat`. Both runs every form. Turn **Space** off to cut the request count roughly in half.
+Default pass, with **Space** on: the seed, then `yoga mat a` through `yoga mat z` and the digits. **Space** off asks for the joined form instead (`yoga mata`). It does not ask for both. Prefix mode does `a yoga mat` or `ayoga mat`. Both runs the suffix and the prefix.
 
 Results are deduped. Each row shows which expansions produced it (`seed`, `+a`, `+ a`), whether the seed sits before, after, or between the other words, and a “similar” mark when a neighbor looks like a typo. Filter, sort, star, select, then copy as newline-separated keywords, or download CSV, XLSX (a second sheet is Word analysis), or an Amazon Ads bulk-sheet CSV (`Campaign`, `Ad Group`, `Keyword`, `Match Type`). The last seed, marketplace, options, result list, stars, and the last 20 runs are stored in `chrome.storage.local` on this device. There is no Sprout account and no Sprout server.
 
@@ -106,7 +124,7 @@ A full US suffix + space run of `yoga mat` that day finished 73/73 prefixes with
 
 Sprout z jedného seed kľúčového slova spraví zoznam, ktorý Amazon ukazuje v našeptávači, a potom ho rozšíri o každé písmeno a číslicu. Je to nástroj na prieskum kľúčových slov pre predajcov, autorov KDP a tvorcov Merch. Neodhaduje objem vyhľadávania a nepýta si účet na Amazone.
 
-Pracovný názov bol Amazon Suggestion Expander. Rozšírenie sa volá **Sprout**. V názve pre Chrome Web Store ostávajú obe časti.
+V Chrome Web Store sa volá **Sprout – Amazon Keyword Research for Sellers**. Nie je prepojené s Amazonom. Zdroj: https://github.com/busfyroman/sprout. Súkromie: https://busfyroman.github.io/sprout/privacy.html.
 
 ### Čo treba
 
@@ -153,7 +171,7 @@ V Chrome je postup rovnaký na `chrome://extensions`.
 - **Bočný panel.** V popupe klikni **Panel**, alebo v Brave otvor bočný panel a vyber Sprout. Beh pokračuje, aj keď prepneš kartu. Popup sa zatvorí, keď z neho odídeš, preto dlhší beh nechaj v bočnom paneli.
 - **Na stránke vyhľadávania Amazonu.** Vpravo dole je malá kapsula. Prečíta aktuálny výraz (`k` alebo `field-keywords` v URL, inak text vo vyhľadávacom poli). Kliknutím sa výraz rozšíri na trhovisku podľa domény.
 
-Predvolený beh: samotný seed, potom seed s prilepeným `a–z` a `0–9` (`yoga mata`) a tie isté znaky za medzerou (`yoga mat a`). Režim Prefix robí `ayoga mat` a `a yoga mat`. Both spustí všetky tvary. Vypnutím **Space** zhruba o polovicu klesne počet požiadaviek.
+Predvolený beh so zapnutým **Space**: seed, potom `yoga mat a` až `yoga mat z` a číslice. Vypnuté **Space** pýta spojený tvar (`yoga mata`), nie oba naraz. Prefix robí `a yoga mat` alebo `ayoga mat`. Both spustí príponu aj predponu.
 
 Výsledky sú bez duplicít. Pri každom riadku je vidno, ktoré rozšírenie ho prinieslo (`seed`, `+a`, `+ a`), či seed stojí pred, za alebo medzi ostatnými slovami, a značku „similar“, keď sused vyzerá ako preklep. Dá sa filtrovať, triediť, označiť hviezdičkou a skopírovať ako kľúčové slová oddelené novým riadkom, alebo stiahnuť CSV, XLSX (druhý hárok je Word analysis) a CSV pre Amazon Ads (`Campaign`, `Ad Group`, `Keyword`, `Match Type`). Posledný seed, trhovisko, voľby, zoznam, hviezdičky a posledných 20 behov ostanú v `chrome.storage.local` v tomto prehliadači. Sprout nemá účet ani vlastný server.
 
@@ -197,7 +215,13 @@ Súkromie: [PRIVACY.md](PRIVACY.md). Návrh textu do Chrome Web Store: [STORE_LI
 
 ![Backend search terms at 248 of 249 bytes. Yoga and mat are left out because they are already in the title.](docs/sprout-search-terms.png)
 
-![Keyword table with marketplace tags and links to Amazon, Google, and Google Trends.](docs/sprout-table.png)
+![Keyword table with marketplace tags and links to Amazon, Google, and Google Trends.](store/screenshots/05-table.png)
+
+![Word frequency in the suggestion list. Counts are not search volume.](store/screenshots/02-words.png)
+
+![Seven KDP boxes of 50 characters.](store/screenshots/03-kdp.png)
+
+![Backend search terms built from the suggestion list.](store/screenshots/04-terms.png)
 
 ![Department picker set to Books.](docs/sprout-department.png)
 
