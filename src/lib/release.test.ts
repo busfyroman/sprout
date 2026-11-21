@@ -18,12 +18,16 @@ test('store name and summary fit the Chrome Web Store limits', () => {
 test('public pages use the busfyroman/sprout URL', () => {
   assert.equal(PROJECT.repoUrl, 'https://github.com/busfyroman/sprout')
   assert.equal(PROJECT.privacyUrl, 'https://busfyroman.github.io/sprout/privacy.html')
-  for (const file of ['docs/privacy.html', 'README.md', 'SUBMIT.md', '.github/ISSUE_TEMPLATE/config.yml']) {
+  for (const file of ['docs/privacy.html', 'docs/index.html', 'README.md', 'SUBMIT.md', '.github/ISSUE_TEMPLATE/config.yml']) {
     const text = readFileSync(path.join(root, file), 'utf8')
     assert.ok(text.includes(PROJECT.repoUrl), file)
     assert.ok(text.includes(PROJECT.privacyUrl), file)
     assert.equal(text.includes('github.com/OWNER'), false, file)
   }
+  const landing = readFileSync(path.join(root, 'docs/index.html'), 'utf8')
+  assert.equal(landing.includes(`href="${PROJECT.storeUrl}"`), true)
+  assert.ok(landing.includes(PROJECT.issuesUrl))
+  assert.ok(readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8').includes('sprout-*-cws.zip'))
 })
 
 test('the rating note waits for three finished runs and stays dismissed', () => {

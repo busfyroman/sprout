@@ -3,19 +3,62 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Sprout</title>
+    <title>Sprout – Amazon keyword research</title>
+    <meta name="description" content="Free keyword research for Amazon sellers. Sprout expands one seed into autocomplete suggestions. No account, no tracking, not affiliated with Amazon." />
     <style>
-      body { margin: 0; background: #f3efe6; color: #1c1915; font: 17px/1.5 "Segoe UI", ui-sans-serif, system-ui, sans-serif; }
-      main { max-width: 40rem; margin: 0 auto; padding: 3rem 1.25rem; }
+      :root { color-scheme: light; }
+      body { margin: 0; background: #f3efe6; color: #1c1915; font: 18px/1.5 "Segoe UI", ui-sans-serif, system-ui, sans-serif; }
       a { color: #1f6b45; }
+      header, main, footer { max-width: 44rem; margin: 0 auto; padding: 0 1.25rem; }
+      header { padding-top: 3.5rem; }
+      .mark { display: inline-block; width: 2.4rem; height: 2.4rem; border-radius: 0.7rem; background: #1c1915; color: #f4e4ce; text-align: center; line-height: 2.4rem; font-weight: 650; }
+      h1 { font-size: 2.6rem; line-height: 1.1; letter-spacing: -0.03em; margin: 0.8rem 0 0.6rem; }
+      h2 { font-size: 1.25rem; margin: 2.4rem 0 0.5rem; }
+      .lede { font-size: 1.15rem; max-width: 36rem; }
+      .note { color: #6f685e; }
+      .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin: 1.4rem 0 0.4rem; }
+      .store { display: inline-block; background: #d4532b; color: #fffdf8; text-decoration: none; border-radius: 0.7rem; padding: 0.7rem 1rem; font-weight: 650; }
+      .store:hover { background: #b84322; }
+      ul { padding-left: 1.15rem; }
+      li { margin: 0.35rem 0; }
+      footer { padding: 2rem 1.25rem 3rem; color: #6f685e; }
     </style>
   </head>
   <body>
-    <main>
+    <header>
+      <span class="mark" aria-hidden="true">S</span>
       <h1>Sprout</h1>
-      <p>Free keyword research for Amazon sellers, KDP authors, and Merch designers. Sprout is not affiliated with Amazon.</p>
-      <p><a href="https://github.com/busfyroman/sprout">Source and feedback</a></p>
+      <p class="lede">Free Amazon keyword research for sellers, KDP authors, and Merch designers. One seed becomes the autocomplete list shoppers see.</p>
+      <div class="actions">
+        <a class="store" href="https://chromewebstore.google.com/detail/sprout/EXTENSION_ID">Add to Chrome</a>
+        <a href="https://github.com/busfyroman/sprout">View the source</a>
+      </div>
+      <p class="note">Not affiliated with Amazon. No account. No tracking. The store button uses the listing address in <code>src/project.ts</code> until the published id replaces <code>EXTENSION_ID</code>.</p>
+    </header>
+    <main>
+      <h2>What you can do</h2>
+      <ul>
+        <li>Expand a seed across letters and digits, with a space or without one, on the Amazon stores in the picker.</li>
+        <li>Limit suggestions to a department such as Books or Kindle.</li>
+        <li>See which words and pairs show up in the list. Those counts are frequency, not search volume.</li>
+        <li>Fill seven KDP boxes of 50 characters, skipping words already in the title or subtitle.</li>
+        <li>Ask for an Amazon result count on selected rows. The label says result count, not search volume.</li>
+        <li>Read related searches and brand names from the Amazon page you already have open.</li>
+      </ul>
+      <h2>What it does not do</h2>
+      <ul>
+        <li>It does not estimate search volume, cost per click, trends, or sales.</li>
+        <li>It does not sign in to Amazon, Seller Central, or a Sprout account.</li>
+        <li>It does not send your keywords to a Sprout server. Autocomplete requests go from your browser to Amazon.</li>
+        <li>It does not hide a competitor until you click exclude.</li>
+        <li>It is not an Amazon product and it is not a reverse lookup of a product code.</li>
+      </ul>
+      <h2>Read more</h2>
       <p><a href="https://busfyroman.github.io/sprout/privacy.html">Privacy policy</a></p>
+      <p><a href="https://github.com/busfyroman/sprout/issues">GitHub issues</a></p>
     </main>
+    <footer>
+      <p>Sprout is free software. Amazon is a trademark of Amazon.com, Inc.</p>
+    </footer>
   </body>
 </html>

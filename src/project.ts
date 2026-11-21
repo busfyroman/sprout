@@ -1,12 +1,14 @@
 /**
- * Public URLs for Sprout. Change this file, then keep docs/privacy.html,
- * the README, and the issue templates on the same repo and privacy URL.
+ * Public URLs for Sprout. This is the only place the Chrome Web Store link is defined.
+ * docs/index.html must use storeUrl as the Add to Chrome href. The release test checks that.
+ * Replace EXTENSION_ID after the listing exists, and update that one href to match.
  */
 export const PROJECT = {
   repoUrl: 'https://github.com/busfyroman/sprout',
   issuesUrl: 'https://github.com/busfyroman/sprout/issues',
   newIssueUrl: 'https://github.com/busfyroman/sprout/issues/new/choose',
   privacyUrl: 'https://busfyroman.github.io/sprout/privacy.html',
+  storeUrl: 'https://chromewebstore.google.com/detail/sprout/EXTENSION_ID',
 } as const
 
 /** Chrome Web Store name. Must stay at or under 75 characters. */
