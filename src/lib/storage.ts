@@ -1,6 +1,6 @@
 import { DEFAULT_SEARCH_TERM_BYTES, LOCK_STALE_MS } from './limits'
 import { getMarketplace } from './marketplaces'
-import { sanitizeRestoredSeed } from './queries'
+import { isLegacyPlaceholderSeed, sanitizeRestoredSeed } from './queries'
 import { parseWordList } from './search-terms'
 import type { ExpandMode, RunSnapshot, SortKey, SproutState } from './types'
 
@@ -147,6 +147,35 @@ export function normalizeSettings(raw: unknown, fallback?: SproutSettings): Spro
       ? Math.min(1000, Math.max(20, Math.round(value.searchTermByteLimit)))
       : base.searchTermByteLimit,
     droppedSearchWords: Array.isArray(value.droppedSearchWords) ? parseWordList(value.droppedSearchWords.join('\n')) : base.droppedSearchWords,
+  }
+}
+
+export function isContextInvalidated(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return /context invalidated|extension context/i.test(message)
+}
+
+export const REOPEN_PANEL_MESSAGE = 'This panel is still open from before Sprout reloaded. Close it and open Sprout again.'
+
+/** Drop the 0.2.0 placeholder if it was saved as a real seed, and write that back. */
+export async function migrateLegacySeed(): Promise<void> {
+  if (!hasChromeStorage()) return
+  const bag = await chrome.storage.local.get([STORAGE_KEY, SETTINGS_KEY])
+  const run = bag[STORAGE_KEY] && typeof bag[STORAGE_KEY] === 'object'
+    ? bag[STORAGE_KEY] as { seed?: unknown }
+    : null
+  const settings = bag[SETTINGS_KEY] && typeof bag[SETTINGS_KEY] === 'object'
+    ? bag[SETTINGS_KEY] as { seed?: unknown }
+    : null
+  const runSeed = typeof run?.seed === 'string' ? run.seed : ''
+  const settingsSeed = typeof settings?.seed === 'string' ? settings.seed : ''
+  if (!isLegacyPlaceholderSeed(runSeed) && !isLegacyPlaceholderSeed(settingsSeed)) return
+  if (run && isLegacyPlaceholderSeed(runSeed)) {
+    await chrome.storage.local.set({ [STORAGE_KEY]: { ...run, seed: '' } })
+  }
+  const current = await loadSettings()
+  if (current.seed === '' && (isLegacyPlaceholderSeed(runSeed) || isLegacyPlaceholderSeed(settingsSeed))) {
+    await saveSettings({ ...current, seed: '' })
   }
 }
 

@@ -70,12 +70,12 @@ export function App({
     : `${getMarketplace(selectedMarkets[0]).code} + ${selectedMarkets.length - 1}`
   const starred = state.savedKeywords.map((item) => item.id)
   const frame = surface === 'overlay'
-    ? 'flex h-[min(640px,calc(100vh-32px))] w-[min(400px,calc(100vw-28px))] flex-col overflow-hidden rounded-2xl border border-line shadow-[0_22px_60px_rgba(28,25,21,0.28)]'
+      ? 'flex h-full max-h-full min-h-0 w-[min(400px,calc(100vw-28px))] flex-col overflow-hidden rounded-2xl border border-line shadow-[0_22px_60px_rgba(28,25,21,0.28)]'
     : surface === 'page'
-      ? 'mx-auto flex h-full w-full max-w-6xl flex-col'
+      ? 'mx-auto flex h-full min-h-0 w-full max-w-6xl flex-col'
       : surface === 'sidepanel'
-        ? 'mx-auto flex h-full w-full max-w-[560px] flex-col'
-        : 'flex h-full w-full flex-col'
+        ? 'mx-auto flex h-full min-h-0 w-full max-w-[560px] flex-col'
+        : 'flex h-full min-h-0 w-full flex-col'
 
   if (!ready) {
     return (
@@ -135,10 +135,15 @@ export function App({
     }
   }
 
-  async function openTable() {
-    if (chrome.runtime?.openOptionsPage) {
-      await chrome.runtime.openOptionsPage()
+  function openTable() {
+    if (research.contextLost) return
+    try {
+      chrome.runtime.sendMessage({ type: 'sprout:open-table' }, () => {
+        void chrome.runtime.lastError
+      })
       if (surface === 'popup') window.close()
+    } catch {
+      research.setNotice('This panel is still open from before Sprout reloaded. Close it and open Sprout again.')
     }
   }
 
@@ -286,7 +291,8 @@ export function App({
         ))}
       </div>
 
-      {research.notice && <Banner tone="warn">{research.notice}</Banner>}
+      {research.contextLost && <Banner tone="error">{research.notice ?? 'This panel is still open from before Sprout reloaded. Close it and open Sprout again.'}</Banner>}
+      {research.notice && !research.contextLost && <Banner tone="warn">{research.notice}</Banner>}
       {run?.status === 'error' && run.error && <Banner tone="error">{run.error}</Banner>}
       {run?.status !== 'error' && run?.warnings[0] && <Banner tone="warn">{run.warnings[0]}</Banner>}
       {research.lockedByOther && <Banner tone="warn">Sprout is already expanding a keyword in another panel.</Banner>}
@@ -418,7 +424,7 @@ export function App({
         )}
       </div>
 
-      <footer className="border-t border-line bg-cream/70 px-3 py-2.5">
+      <footer className="relative z-10 shrink-0 border-t border-line bg-cream px-3 py-2.5">
         <div className="flex items-center gap-1.5">
           <Button type="button" size="sm" onClick={() => void onCopy()} disabled={exportCount === 0} className={copyState === 'done' ? 'bg-moss hover:bg-moss' : ''}>
             <Copy className="h-3.5 w-3.5" aria-hidden />

@@ -12,13 +12,11 @@ export function keywordsToCopy(items: readonly Suggestion[]): string {
 }
 
 export function buildExportRows(items: readonly Suggestion[], meta: ExportMeta): string[][] {
-  const header = ['keyword', 'sources', 'marketplaces', 'marketplace', 'domain', 'seed']
+  const header = ['keyword', 'sources', 'marketplaces', 'seed']
   const body = items.map((item) => [
     safeSpreadsheetText(item.value),
     safeSpreadsheetText(item.sources.map((source) => source.exportLabel).join('; ')),
     safeSpreadsheetText((item.marketplaces ?? []).join('; ')),
-    meta.marketplace,
-    meta.domain,
     safeSpreadsheetText(meta.seed),
   ])
   return [header, ...body]

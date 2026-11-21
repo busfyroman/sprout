@@ -332,7 +332,12 @@ describe('failed prefixes', () => {
 describe('restore and history policy', () => {
   it('drops the old placeholder seed and records failed runs', () => {
     assert.equal(sanitizeRestoredSeed('yoga mat, low content book, funny nurse'), '')
+    assert.equal(sanitizeRestoredSeed('yoga mat, low content book, funny nurse…'), '')
     assert.equal(sanitizeRestoredSeed('yoga mat'), 'yoga mat')
+    assert.equal(buildExportRows(
+      [{ key: 'yoga mat', value: 'yoga mat', sources: [], marketplaces: ['us', 'uk'] }],
+      { seed: 'yoga mat', marketplace: 'United States; United Kingdom', domain: 'amazon.com' },
+    )[0]?.join(','), 'keyword,sources,marketplaces,seed')
     assert.equal(shouldRecordHistory('error'), true)
     assert.equal(shouldRecordHistory('cancelled'), true)
     assert.equal(shouldRecordHistory('done'), true)

@@ -5,7 +5,7 @@ import { getMarketplace } from '../lib/marketplaces'
 import { expandSelectedMarketplaces, hasPro } from '../lib/pro'
 import { cleanSeed, sanitizeRestoredSeed } from '../lib/queries'
 import { parseWordList } from '../lib/search-terms'
-import { hasChromeStorage, defaultState, loadSettings, loadState, normalizeState, saveSettings, saveState, watchSettings, watchState, type SproutSettings } from '../lib/storage'
+import { hasChromeStorage, defaultState, isContextInvalidated, loadSettings, loadState, migrateLegacySeed, normalizeState, REOPEN_PANEL_MESSAGE, saveSettings, saveState, watchSettings, watchState, type SproutSettings } from '../lib/storage'
 import type { ExpandMode, SortKey, SproutState, Suggestion } from '../lib/types'
 
 export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: string }) {
@@ -15,6 +15,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
   const [selected, setSelected] = useState<string[]>([])
   const [filter, setFilter] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
+  const [contextLost, setContextLost] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const stateRef = useRef(state)
   const readyRef = useRef(false)
@@ -33,7 +34,12 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
         const target = rev.current
         try {
           await saveState(stateRef.current)
-        } catch {
+        } catch (error) {
+          if (isContextInvalidated(error)) {
+            setContextLost(true)
+            setNotice(REOPEN_PANEL_MESSAGE)
+            break
+          }
           setNotice('Couldn’t save this run on this device. The list is still here until you close the panel.')
         }
         savedRev.current = target
@@ -70,7 +76,12 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     const next = { ...stateRef.current, ...partial }
     stateRef.current = next
     setState(next)
-    void saveSettings(partial)
+    void saveSettings(partial).catch((error: unknown) => {
+      if (isContextInvalidated(error)) {
+        setContextLost(true)
+        setNotice(REOPEN_PANEL_MESSAGE)
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -97,6 +108,15 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
       })
     })
     void (async () => {
+      try {
+        await migrateLegacySeed()
+      } catch (error) {
+        if (isContextInvalidated(error)) {
+          setContextLost(true)
+          setNotice(REOPEN_PANEL_MESSAGE)
+          return
+        }
+      }
       const stored = normalizeState(await loadState())
       const settings = pendingSettings ?? await loadSettings()
       let history = stored.history
@@ -288,6 +308,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     setFilter,
     notice,
     setNotice,
+    contextLost,
     runningHere,
     lockedByOther,
     patch,

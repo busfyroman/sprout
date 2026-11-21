@@ -25,6 +25,26 @@ try {
   if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 15000 })
   const extensionId = new URL(worker.url()).host
   console.log('extension', extensionId)
+  await worker.evaluate(async () => {
+    await chrome.storage.local.set({
+      'sprout.v1': {
+        version: 1,
+        seed: 'yoga mat, low content book, funny nurse…',
+        marketplaceId: 'us',
+        mode: 'suffix',
+        includeSpace: true,
+        sort: 'alpha',
+        run: null,
+        runLock: null,
+        history: [],
+        savedKeywords: [],
+        excludedWords: [],
+        listingText: '',
+        searchTermByteLimit: 249,
+        droppedSearchWords: [],
+      },
+    })
+  })
   const page = context.pages()[0] ?? await context.newPage()
   await page.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`)
   const seed = page.locator('input[name="sprout-seed"]')
@@ -33,6 +53,24 @@ try {
   if (initial !== '') throw new Error(`Seed field was not empty: ${JSON.stringify(initial)}`)
   const placeholder = await seed.getAttribute('placeholder')
   if (placeholder !== 'e.g. yoga mat') throw new Error(`Unexpected placeholder: ${placeholder}`)
+  const storedSeed = await worker.evaluate(async () => {
+    const bag = await chrome.storage.local.get(['sprout.v1', 'sprout.settings'])
+    return {
+      run: bag['sprout.v1']?.seed ?? null,
+      settings: bag['sprout.settings']?.seed ?? null,
+    }
+  })
+  if (storedSeed.run !== '' || (storedSeed.settings != null && storedSeed.settings !== '')) {
+    throw new Error(`Legacy seed was not cleared: ${JSON.stringify(storedSeed)}`)
+  }
+  console.log('legacy seed cleared')
+
+  const tableOpen = context.waitForEvent('page')
+  await page.getByRole('button', { name: 'Table' }).click()
+  const tableFromPanel = await tableOpen
+  await tableFromPanel.waitForURL(/\/src\/viewer\/index\.html/)
+  console.log('table from side panel', tableFromPanel.url())
+  await tableFromPanel.close()
 
   await seed.fill('yoga mat')
   await page.getByRole('button', { name: 'Expand', exact: true }).click()
@@ -132,6 +170,26 @@ try {
   const pill = amazonPage.getByRole('button', { name: /Expand suggestions/ })
   await pill.waitFor({ timeout: 20000 })
   await pill.click()
+  const overlap = await amazonPage.evaluate(() => {
+    const root = document.getElementById('sprout-amazon-suggestion-expander')?.shadowRoot
+    const footer = root?.querySelector('footer')?.getBoundingClientRect()
+    const rows = [...(root?.querySelectorAll('li') ?? [])]
+    const covered = rows.filter((row) => {
+      const rect = row.getBoundingClientRect()
+      if (!footer || rect.height < 4) return false
+      const overlapHeight = Math.min(rect.bottom, footer.bottom) - Math.max(rect.top, footer.top)
+      return overlapHeight > 4
+    }).length
+    return covered
+  })
+  if (overlap > 0) throw new Error(`On-page footer covers ${overlap} result rows`)
+  console.log('on-page footer does not cover rows')
+  const pillTable = context.waitForEvent('page')
+  await amazonPage.getByRole('button', { name: 'Table' }).click()
+  const tableFromPill = await pillTable
+  await tableFromPill.waitForURL(/\/src\/viewer\/index\.html/)
+  console.log('table from on-page panel', tableFromPill.url())
+  await tableFromPill.close()
   const pillSwitch = amazonPage.getByRole('switch', { name: 'Insert a space before the extra letter' })
   await pillSwitch.waitFor()
   const beforeSync = await pillSwitch.getAttribute('aria-checked')

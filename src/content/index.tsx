@@ -17,6 +17,21 @@ function Overlay() {
   const [liveSeed, setLiveSeed] = useState(currentSeed)
   const [open, setOpen] = useState(false)
   const [sessionSeed, setSessionSeed] = useState<string | null>(null)
+  const expanded = open && sessionSeed !== null
+
+  useEffect(() => {
+    const host = document.getElementById(HOST_ID)
+    if (!host) return
+    if (expanded) {
+      host.style.height = 'min(640px, calc(100vh - 32px))'
+      host.style.maxHeight = 'calc(100vh - 32px)'
+      host.style.overflow = 'hidden'
+    } else {
+      host.style.height = 'auto'
+      host.style.maxHeight = 'none'
+      host.style.overflow = 'visible'
+    }
+  }, [expanded])
 
   useEffect(() => {
     const id = window.setInterval(() => setLiveSeed(currentSeed()), 1000)
@@ -73,14 +88,23 @@ function mount(): void {
   host.style.zIndex = '2147483646'
   host.style.right = '16px'
   host.style.bottom = '16px'
-  host.style.display = 'block'
+  host.style.display = 'flex'
+  host.style.flexDirection = 'column'
   host.style.width = 'max-content'
   host.style.maxWidth = 'calc(100vw - 24px)'
+  host.style.height = 'min(640px, calc(100vh - 32px))'
+  host.style.maxHeight = 'calc(100vh - 32px)'
+  host.style.overflow = 'hidden'
   host.style.colorScheme = 'light'
   const shadow = host.attachShadow({ mode: 'open' })
   const style = document.createElement('style')
   style.textContent = cssText
   const mountPoint = document.createElement('div')
+  mountPoint.style.display = 'flex'
+  mountPoint.style.flexDirection = 'column'
+  mountPoint.style.height = '100%'
+  mountPoint.style.minHeight = '0'
+  mountPoint.style.overflow = 'hidden'
   shadow.append(style, mountPoint)
   document.documentElement.appendChild(host)
   createRoot(mountPoint).render(

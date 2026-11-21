@@ -13,16 +13,28 @@ const LETTERS = 'abcdefghijklmnopqrstuvwxyz'
 const DIGITS = '0123456789'
 export const EXPAND_CHARS = [...LETTERS, ...DIGITS]
 
-const LEGACY_PLACEHOLDER = /^yoga mat,\s*low content book\b/i
-
 export function cleanSeed(value: string): string {
   return value.replace(/\s+/g, ' ').trim().slice(0, MAX_SEED_LENGTH)
 }
 
-/** The old placeholder looked like a saved multi-keyword seed. Never restore it. */
+/**
+ * 0.2.0 showed "yoga mat, low content book, funny nurse…" as a placeholder.
+ * Some profiles saved that string as the seed. Treat every variant as empty.
+ */
+export function isLegacyPlaceholderSeed(value: string): boolean {
+  const folded = cleanSeed(value)
+    .toLowerCase()
+    .replace(/\u2026/g, '...')
+    .replace(/\.+$/g, '')
+    .trim()
+  if (!folded) return false
+  if (folded.startsWith('yoga mat, low content book')) return true
+  return folded.includes('low content book') && folded.includes('funny nurse')
+}
+
 export function sanitizeRestoredSeed(value: string): string {
   const cleaned = cleanSeed(value)
-  if (LEGACY_PLACEHOLDER.test(cleaned)) return ''
+  if (isLegacyPlaceholderSeed(cleaned)) return ''
   return cleaned
 }
 
