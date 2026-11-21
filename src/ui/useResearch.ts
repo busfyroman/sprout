@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { expandSeed } from '../lib/expand'
 import { LOCK_STALE_MS, MAX_SEED_LENGTH } from '../lib/limits'
+import { deleteHistoryEntry, listHistory, listSaved, removeSaved, saveHistoryEntry, toggleSaved, LIBRARY_TICK } from '../lib/library'
 import { getMarketplace } from '../lib/marketplaces'
-import { appendHistory } from '../lib/pro'
+import { expandSelectedMarketplaces, hasPro } from '../lib/pro'
 import { cleanSeed } from '../lib/queries'
-import { defaultState, loadState, normalizeState, saveState, watchState } from '../lib/storage'
-import type { ExpandMode, SortKey, SproutState } from '../lib/types'
+import { parseWordList } from '../lib/search-terms'
+import { hasChromeStorage, defaultState, loadState, normalizeState, saveState, watchState } from '../lib/storage'
+import type { ExpandMode, SortKey, SproutState, Suggestion } from '../lib/types'
 
 export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: string }) {
   const ownerId = useRef(crypto.randomUUID())
@@ -69,8 +70,17 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     let unwatch = () => {}
     void (async () => {
       const stored = normalizeState(await loadState())
+      let history = stored.history
+      let saved = stored.savedKeywords
+      try {
+        const [fromDbHistory, fromDbSaved] = await Promise.all([listHistory(), listSaved()])
+        if (fromDbHistory.length > 0) history = fromDbHistory
+        if (fromDbSaved.length > 0) saved = fromDbSaved
+      } catch {
+        // IndexedDB can be unavailable. The chrome.storage copy, if any, still shows.
+      }
       if (cancelled) return
-      let next = stored
+      let next = { ...stored, history, savedKeywords: saved }
       const lockFresh = stored.runLock != null && Date.now() - stored.runLock.heartbeat < LOCK_STALE_MS
       if (!lockFresh) {
         if (options?.pageMarketplaceId) next = { ...next, marketplaceId: getMarketplace(options.pageMarketplaceId).id }
@@ -84,8 +94,11 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
       }
       unwatch = watchState((incoming) => {
         if (cancelled || incoming.writerId === ownerId.current) return
-        stateRef.current = incoming
-        setState(incoming)
+        setState((current) => {
+          const next = { ...incoming, history: current.history, savedKeywords: current.savedKeywords }
+          stateRef.current = next
+          return next
+        })
       })
     })()
     return () => {
@@ -121,6 +134,22 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     setSelected([])
   }, [state.run?.startedAt])
 
+  useEffect(() => {
+    if (!hasChromeStorage()) return
+    const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
+      if (area !== 'local' || !changes[LIBRARY_TICK]) return
+      void Promise.all([listHistory(), listSaved()]).then(([history, savedKeywords]) => {
+        setState((current) => {
+          const next = { ...current, history, savedKeywords }
+          stateRef.current = next
+          return next
+        })
+      })
+    }
+    chrome.storage.onChanged.addListener(listener)
+    return () => chrome.storage.onChanged.removeListener(listener)
+  }, [])
+
   const patch = useCallback((partial: Partial<SproutState>) => {
     persist({ ...stateRef.current, ...partial }, true)
   }, [persist])
@@ -143,15 +172,22 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     abortRef.current = controller
     setNotice(null)
     setFilter('')
-    const marketplace = getMarketplace(current.marketplaceId)
+    const marketplaceIds = (current.selectedMarketplaceIds.length > 0 ? current.selectedMarketplaceIds : [current.marketplaceId])
+      .map((id) => getMarketplace(id).id)
+    const uniqueIds = [...new Set(marketplaceIds)]
+    const marketplace = getMarketplace(uniqueIds[0] ?? current.marketplaceId)
     persist(
       {
         ...current,
         seed,
+        marketplaceId: marketplace.id,
+        selectedMarketplaceIds: uniqueIds,
+        droppedSearchWords: [],
         runLock: { ownerId: ownerId.current, heartbeat: Date.now() },
         run: {
           seed,
           marketplaceId: marketplace.id,
+          marketplaceIds: uniqueIds,
           mode: current.mode,
           includeSpace: current.includeSpace,
           suggestions: [],
@@ -172,27 +208,32 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     )
 
     try {
-      await expandSeed({
+      await expandSelectedMarketplaces({
         seed,
-        marketplace,
+        marketplaceIds: uniqueIds,
         mode: current.mode,
         includeSpace: current.includeSpace,
         signal: controller.signal,
         onProgress: (run) => {
           const latest = stateRef.current
-          const history = run.status === 'done'
-            ? appendHistory(latest.history, { id: String(run.startedAt), savedAt: Date.now(), run })
-            : latest.history
           const settled = run.status !== 'running'
           persist(
             {
               ...latest,
-              history,
               run,
               runLock: settled ? null : { ownerId: ownerId.current, heartbeat: Date.now() },
             },
             settled,
           )
+          if (settled && hasPro('history') && run.suggestions.length > 0) {
+            void saveHistoryEntry({ id: String(run.startedAt), savedAt: Date.now(), run }).then((history) => {
+              setState((current) => {
+                const next = { ...current, history }
+                stateRef.current = next
+                return next
+              })
+            })
+          }
         },
       })
     } finally {
@@ -223,9 +264,66 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     start,
     stop,
     setSeed: (seed: string) => patch({ seed: seed.slice(0, MAX_SEED_LENGTH) }),
-    setMarketplaceId: (marketplaceId: string) => patch({ marketplaceId: getMarketplace(marketplaceId).id }),
+    setSelectedMarketplaceIds: (ids: string[]) => {
+      const unique = [...new Set(ids.map((id) => getMarketplace(id).id))]
+      const selected = unique.length > 0 ? unique : [stateRef.current.marketplaceId]
+      patch({ selectedMarketplaceIds: selected, marketplaceId: selected[0] })
+    },
     setMode: (mode: ExpandMode) => patch({ mode }),
     setIncludeSpace: (includeSpace: boolean) => patch({ includeSpace }),
     setSort: (sort: SortKey) => patch({ sort }),
+    setExcludedWords: (words: string[]) => patch({ excludedWords: parseWordList(words.join('\n')) }),
+    setListingText: (listingText: string) => patch({ listingText }),
+    setSearchTermByteLimit: (searchTermByteLimit: number) => patch({ searchTermByteLimit }),
+    dropSearchWord: (word: string) => {
+      const dropped = parseWordList([...stateRef.current.droppedSearchWords, word].join('\n'))
+      patch({ droppedSearchWords: dropped })
+    },
+    clearDroppedSearchWords: () => patch({ droppedSearchWords: [] }),
+    toggleStar: async (item: Suggestion) => {
+      if (!hasPro('savedKeywords')) return
+      const saved = await toggleSaved({
+        id: item.key,
+        value: item.value,
+        marketplaceIds: item.marketplaces && item.marketplaces.length > 0 ? item.marketplaces : [stateRef.current.marketplaceId],
+        seed: stateRef.current.run?.seed || stateRef.current.seed,
+        savedAt: Date.now(),
+      })
+      setState((current) => {
+        const next = { ...current, savedKeywords: saved }
+        stateRef.current = next
+        return next
+      })
+    },
+    removeSaved: async (id: string) => {
+      const saved = await removeSaved(id)
+      setState((current) => {
+        const next = { ...current, savedKeywords: saved }
+        stateRef.current = next
+        return next
+      })
+    },
+    openHistory: (id: string) => {
+      const entry = stateRef.current.history.find((item) => item.id === id)
+      if (!entry) return
+      patch({
+        run: entry.run,
+        seed: entry.run.seed,
+        marketplaceId: entry.run.marketplaceId,
+        selectedMarketplaceIds: entry.run.marketplaceIds?.length ? entry.run.marketplaceIds : [entry.run.marketplaceId],
+        mode: entry.run.mode,
+        includeSpace: entry.run.includeSpace,
+      })
+    },
+    deleteHistory: async (id: string) => {
+      const history = await deleteHistoryEntry(id)
+      setState((current) => {
+        const next = { ...current, history }
+        stateRef.current = next
+        return next
+      })
+    },
   }
 }
+
+export type Research = ReturnType<typeof useResearch>

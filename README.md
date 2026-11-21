@@ -57,7 +57,16 @@ Chrome is the same flow at `chrome://extensions`.
 
 Default pass: the seed, then the seed with each `a–z` and `0–9` glued on (`yoga mata`), and the same letters after a space (`yoga mat a`). Prefix mode does `ayoga mat` and `a yoga mat`. Both runs every form. Turn **Space** off to cut the request count roughly in half.
 
-Results are deduped. Each row shows which expansions produced it (`seed`, `+a`, `+ a`). Filter, sort, select, then copy as newline-separated keywords, or download CSV or XLSX. The last seed, marketplace, options, and result list are stored in `chrome.storage.local`.
+Results are deduped. Each row shows which expansions produced it (`seed`, `+a`, `+ a`). Filter, sort, star, select, then copy as newline-separated keywords, or download CSV or XLSX. The last seed, marketplace, options, and result list are stored in `chrome.storage.local`. Saved keywords and finished runs are stored in IndexedDB on this device. There is no Sprout account and no Sprout server.
+
+### Search terms, exclusions, stars, batch, history
+
+- **Backend search terms.** The Terms tab builds a space-separated string from the most common words in the current results, within a byte limit (249 by default, editable). It skips stop words, words you paste from the title or bullets, and words you have excluded. Click a word to drop it; the next word fills the freed bytes. A counter shows UTF-8 bytes used. This is frequency in the suggestion list, not search volume.
+- **Exclude words.** A brand or phrase you add is hidden from the list and from copy/CSV/XLSX. The list is kept locally.
+- **Saved keywords.** The star keeps a keyword with its marketplace and the date. The Saved tab copies or exports that list.
+- **Several marketplaces.** Open the marketplace button and check more than one. One Expand runs the same seed on each, and rows are tagged with the marketplace codes.
+- **History.** The last 20 finished runs can be reopened and exported again.
+- **Keyword table.** Table (or the extension’s options page) opens a full page: sort, filter, and a link from each row to that keyword on Amazon, Google, and Google Trends. Sprout does not invent search volume or CPC.
 
 Requests go out three at a time, with a short gap, and retry on rate limits and 5xx responses with backoff. If `completion.amazon.<domain>` fails or returns a body that is not suggestion JSON, Sprout retries that prefix on `www.amazon.<domain>/suggestions` and says so in the panel. An empty list for an obscure prefix is a normal answer, not an error. If the seed itself fails on both hosts, the panel names both hosts and the HTTP status instead of showing a blank success.
 
@@ -76,9 +85,9 @@ Checked on 21 Nov 2026:
 
 A full US suffix + space run of `yoga mat` that day finished 73/73 prefixes with 434 unique keywords and no failures, using `completion.amazon.com`. `completion.amazon.in` often returns HTTP 502; Sprout then uses `www.amazon.in/suggestions`, which did return keywords. The old `/search/complete` route is a 404.
 
-### Pro, later
+### Feature flags
 
-`src/lib/pro.ts` exports `CURRENT_ENTITLEMENTS`. Both flags are `false` in this build. `expandAllMarketplaces` and `appendHistory` already exist and refuse to run until a license check flips the matching flag. The department `alias` argument on `suggestionUrl` defaults to `aps` (all departments) so a later Books or Clothing pass does not need a new client.
+`src/lib/pro.ts` exports `CURRENT_ENTITLEMENTS`. Every flag is on: multi-marketplace, history, search terms, saved keywords, and exclusions. There is no license check. Set a flag to `false` later if a build should hide that feature; callers already use `hasPro`. The department `alias` argument on `suggestionUrl` defaults to `aps` (all departments).
 
 ## Slovenčina
 
@@ -133,7 +142,16 @@ V Chrome je postup rovnaký na `chrome://extensions`.
 
 Predvolený beh: samotný seed, potom seed s prilepeným `a–z` a `0–9` (`yoga mata`) a tie isté znaky za medzerou (`yoga mat a`). Režim Prefix robí `ayoga mat` a `a yoga mat`. Both spustí všetky tvary. Vypnutím **Space** zhruba o polovicu klesne počet požiadaviek.
 
-Výsledky sú bez duplicít. Pri každom riadku je vidno, ktoré rozšírenie ho prinieslo (`seed`, `+a`, `+ a`). Dá sa filtrovať, triediť, označiť a skopírovať ako kľúčové slová oddelené novým riadkom, alebo stiahnuť CSV a XLSX. Posledný seed, trhovisko, voľby a zoznam ostanú v `chrome.storage.local`.
+Výsledky sú bez duplicít. Pri každom riadku je vidno, ktoré rozšírenie ho prinieslo (`seed`, `+a`, `+ a`). Dá sa filtrovať, triediť, označiť hviezdičkou a skopírovať ako kľúčové slová oddelené novým riadkom, alebo stiahnuť CSV a XLSX. Posledný seed, trhovisko, voľby a zoznam ostanú v `chrome.storage.local`. Uložené kľúčové slová a dokončené behy sú v IndexedDB v tomto prehliadači. Sprout nemá účet ani vlastný server.
+
+### Search terms, vylúčenia, hviezdičky, viac trhovísk, história
+
+- **Backend search terms.** Karta Terms poskladá reťazec z najčastejších slov vo výsledkoch, v limite bajtov (predvolene 249, dá sa zmeniť). Vynechá stop slová, slová vložené z titulku alebo odrážok a vylúčené slová. Klik na slovo ho vyhodí a na uvoľnené bajty príde ďalšie. Počítadlo ukazuje UTF-8 bajty. Je to počet výskytov v návrhoch, nie objem vyhľadávania.
+- **Vylúčené slová.** Značka alebo slovné spojenie zmizne zo zoznamu aj z kopírovania a exportu. Zoznam ostáva lokálne.
+- **Uložené kľúčové slová.** Hviezdička podrží slovo s trhoviskom a dátumom. Karta Saved ho skopíruje alebo exportuje.
+- **Viac trhovísk.** Otvor tlačidlo trhoviska a zaškrtni viac ako jedno. Jeden Expand spustí ten istý seed na každom a riadky označí kódom trhoviska.
+- **História.** Posledných 20 dokončených behov sa dá znova otvoriť a exportovať.
+- **Tabuľka.** Table (alebo stránka možností rozšírenia) otvorí celú stránku: triedenie, filter a odkaz z každého riadku na Amazon, Google a Google Trends. Sprout nevymýšľa hľadanosť ani CPC.
 
 Požiadavky idú po troch, s krátkou medzerou, a pri obmedzení rýchlosti alebo odpovedi 5xx sa opakujú s odstupom. Keď `completion.amazon.<doména>` zlyhá alebo nevráti JSON návrhov, Sprout ten istý prefix skúsi na `www.amazon.<doména>/suggestions` a v paneli to napíše. Prázdny zoznam pri nezvyčajnom prefixe je normálna odpoveď, nie chyba. Ak zlyhá aj samotný seed na oboch hostiteľoch, panel uvedie oba hostiteľov a HTTP stav namiesto prázdneho úspechu.
 
@@ -143,10 +161,14 @@ Identifikátory trhovísk, domény a locale sú v `src/lib/marketplaces.ts`. Tva
 
 Overené 21. novembra 2026: `yoga mat` na amazon.com vrátilo napríklad yoga mat thick a yoga mat towel; na amazon.de `yoga matte`, `yoga matte dick`, `yogamatte rutschfest`. Úplný beh suffix + medzera pre `yoga mat` na .com v ten deň dokončil 73/73 prefixov, 434 unikátnych slov, bez zlyhania, cez `completion.amazon.com`. `completion.amazon.in` často vracia HTTP 502; Sprout potom použije `www.amazon.in/suggestions`. Stará cesta `/search/complete` vracia 404.
 
-### Pro, neskôr
+### Prepínače funkcií
 
-`src/lib/pro.ts` má `CURRENT_ENTITLEMENTS`. V tomto zostavení sú oba prepínače `false`. `expandAllMarketplaces` a `appendHistory` už existujú a odmietnu bežať, kým kontrola licencie príslušný prepínač nezapne. Argument `alias` vo `suggestionUrl` je predvolene `aps` (všetky oddelenia), takže neskorší beh pre knihy alebo oblečenie nepotrebuje nového klienta.
+`src/lib/pro.ts` má `CURRENT_ENTITLEMENTS`. Všetky prepínače sú zapnuté: viac trhovísk, história, search terms, uložené slová a vylúčenia. Licencia sa nekontroluje. Prepínač nastavený na `false` funkciu neskôr skryje; volania už používajú `hasPro`. Argument `alias` vo `suggestionUrl` je predvolene `aps` (všetky oddelenia).
 
 Súkromie: [PRIVACY.md](PRIVACY.md). Návrh textu do Chrome Web Store: [STORE_LISTING.md](STORE_LISTING.md).
 
-![Sprout after expanding yoga mat on amazon.com: 434 keywords from 73 prefixes](docs/sprout-yoga-mat.png)
+![Sprout after expanding yoga mat on amazon.com. Manduka is excluded, and starred keywords stay saved.](docs/sprout-yoga-mat.png)
+
+![Backend search terms at 248 of 249 bytes. Yoga and mat are left out because they are already in the title.](docs/sprout-search-terms.png)
+
+![Keyword table with marketplace tags and links to Amazon, Google, and Google Trends.](docs/sprout-table.png)

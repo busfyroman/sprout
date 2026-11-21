@@ -1,6 +1,9 @@
+import { Star } from 'lucide-react'
+import { getMarketplace } from '../lib/marketplaces'
+import { suggestionMarkets } from '../lib/results'
+import type { SortKey, Suggestion } from '../lib/types'
 import { Checkbox } from './components/checkbox'
 import { Input } from './components/input'
-import type { SortKey, Suggestion } from '../lib/types'
 
 const SORTS: Array<{ id: SortKey; label: string }> = [
   { id: 'alpha', label: 'A → Z' },
@@ -17,10 +20,13 @@ export function ResultsList({
   filter,
   sort,
   emptyLabel,
+  starred,
+  fallbackMarketplaceId,
   onFilter,
   onSort,
   onToggle,
   onToggleVisible,
+  onStar,
 }: {
   items: Suggestion[]
   total: number
@@ -28,10 +34,13 @@ export function ResultsList({
   filter: string
   sort: SortKey
   emptyLabel: string
+  starred: string[]
+  fallbackMarketplaceId: string
   onFilter: (value: string) => void
   onSort: (sort: SortKey) => void
   onToggle: (key: string) => void
   onToggleVisible: (checked: boolean) => void
+  onStar: (item: Suggestion) => void
 }) {
   const selectedVisible = items.filter((item) => selected.includes(item.key)).length
   const allChecked = items.length > 0 && selectedVisible === items.length
@@ -78,6 +87,8 @@ export function ResultsList({
             {items.map((item) => {
               const checked = selected.includes(item.key)
               const extra = item.sources.length > 2 ? item.sources.length - 2 : 0
+              const markets = suggestionMarkets(item, fallbackMarketplaceId)
+              const saved = starred.includes(item.key)
               return (
                 <li key={item.key} className="border-b border-line/80 last:border-b-0">
                   <div
@@ -94,7 +105,23 @@ export function ResultsList({
                     className={`flex cursor-pointer items-center gap-2 px-2.5 py-1.5 outline-none focus-visible:bg-sand/70 ${checked ? 'bg-clay/5' : 'hover:bg-sand/50'}`}
                   >
                     <Checkbox checked={checked} tabIndex={-1} aria-hidden className="pointer-events-none" />
+                    <button
+                      type="button"
+                      aria-label={saved ? `Unsave ${item.value}` : `Save ${item.value}`}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onStar(item)
+                      }}
+                      className="text-muted hover:text-clay"
+                    >
+                      <Star className={`h-3.5 w-3.5 ${saved ? 'fill-clay text-clay' : ''}`} />
+                    </button>
                     <span className="min-w-0 flex-1 truncate text-[13px]" title={item.value}>{item.value}</span>
+                    {markets.length > 1 && (
+                      <span className="shrink-0 font-mono text-[10px] text-muted">
+                        {markets.map((id) => getMarketplace(id).code).join(' ')}
+                      </span>
+                    )}
                     <span className="flex shrink-0 items-center gap-1" title={item.sources.map((source) => source.label).join(', ')}>
                       {item.sources.slice(0, 2).map((source) => (
                         <span

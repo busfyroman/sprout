@@ -1,17 +1,24 @@
-import { Copy, PanelRight, Sprout, X } from 'lucide-react'
+import { Copy, PanelRight, Sprout, Table2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { buildCsv, buildWorkbook, copyText, downloadBytes, downloadText, exportBasename, keywordsToCopy } from '../lib/export'
 import { getMarketplace, MARKETPLACES } from '../lib/marketplaces'
+import { hasPro } from '../lib/pro'
 import { describePlan } from '../lib/queries'
-import { filterSuggestions, sortSuggestions } from '../lib/results'
+import { applyExclusions, filterSuggestions, sortSuggestions } from '../lib/results'
+import { parseWordList } from '../lib/search-terms'
 import type { ExpandMode } from '../lib/types'
+import { HistoryPanel, SavedPanel } from './LibraryPanels'
+import { KeywordTable } from './KeywordTable'
 import { ResultsList } from './ResultsList'
+import { SearchTermsPanel } from './SearchTermsPanel'
 import { Button } from './components/button'
 import { Input } from './components/input'
 import { Switch } from './components/switch'
+import { formatWhen } from './format'
 import { useResearch } from './useResearch'
 
-export type Surface = 'popup' | 'sidepanel' | 'overlay'
+export type Surface = 'popup' | 'sidepanel' | 'overlay' | 'page'
+type PanelTab = 'results' | 'terms' | 'saved' | 'history'
 
 const MODES: Array<{ id: ExpandMode; label: string }> = [
   { id: 'suffix', label: 'Suffix' },
@@ -31,14 +38,21 @@ export function App({
   onCollapse?: () => void
 }) {
   const research = useResearch({ pageSeed, pageMarketplaceId })
+  const [tab, setTab] = useState<PanelTab>('results')
+  const [marketsOpen, setMarketsOpen] = useState(false)
+  const [excludeDraft, setExcludeDraft] = useState('')
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
   const { state, ready } = research
   const plan = describePlan(state.seed, state.mode, state.includeSpace)
   const run = state.run
   const suggestions = useMemo(
-    () => (run?.suggestions ?? []).filter((item) => item && typeof item.value === 'string'),
-    [run],
+    () => applyExclusions(
+      (run?.suggestions ?? []).filter((item) => item && typeof item.value === 'string'),
+      hasPro('exclusions') ? state.excludedWords : [],
+    ),
+    [run, state.excludedWords],
   )
+  const hiddenCount = (run?.suggestions.length ?? 0) - suggestions.length
   const filtered = useMemo(
     () => sortSuggestions(filterSuggestions(suggestions, research.filter), state.sort),
     [suggestions, research.filter, state.sort],
@@ -50,11 +64,18 @@ export function App({
   const exportItems = selectedItems.length > 0 ? selectedItems : filtered
   const exportCount = exportItems.length
   const running = research.runningHere || research.lockedByOther
+  const selectedMarkets = state.selectedMarketplaceIds.length > 0 ? state.selectedMarketplaceIds : [state.marketplaceId]
+  const marketLabel = selectedMarkets.length === 1
+    ? `${getMarketplace(selectedMarkets[0]).code} · ${getMarketplace(selectedMarkets[0]).domain}`
+    : `${getMarketplace(selectedMarkets[0]).code} + ${selectedMarkets.length - 1}`
+  const starred = state.savedKeywords.map((item) => item.id)
   const frame = surface === 'overlay'
     ? 'flex h-[min(640px,calc(100vh-32px))] w-[min(400px,calc(100vw-28px))] flex-col overflow-hidden rounded-2xl border border-line shadow-[0_22px_60px_rgba(28,25,21,0.28)]'
-    : surface === 'sidepanel'
-      ? 'mx-auto flex h-full w-full max-w-[560px] flex-col'
-      : 'flex h-full w-full flex-col'
+    : surface === 'page'
+      ? 'mx-auto flex h-full w-full max-w-6xl flex-col'
+      : surface === 'sidepanel'
+        ? 'mx-auto flex h-full w-full max-w-[560px] flex-col'
+        : 'flex h-full w-full flex-col'
 
   if (!ready) {
     return (
@@ -84,21 +105,18 @@ export function App({
 
   function download(kind: 'csv' | 'xlsx') {
     if (exportItems.length === 0 || !run) return
+    const ids = run.marketplaceIds?.length ? run.marketplaceIds : [run.marketplaceId]
     const meta = {
       seed: run.seed,
-      marketplace: getMarketplace(run.marketplaceId).label,
-      domain: getMarketplace(run.marketplaceId).domain,
+      marketplace: ids.map((id) => getMarketplace(id).label).join('; '),
+      domain: ids.map((id) => getMarketplace(id).domain).join('; '),
     }
-    const base = exportBasename(run.seed, meta.domain)
+    const base = exportBasename(run.seed, getMarketplace(ids[0]).domain)
     if (kind === 'csv') {
       downloadText(`${base}.csv`, buildCsv(exportItems, meta), 'text/csv;charset=utf-8')
       return
     }
-    downloadBytes(
-      `${base}.xlsx`,
-      buildWorkbook(exportItems, meta),
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    )
+    downloadBytes(`${base}.xlsx`, buildWorkbook(exportItems, meta), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
   }
 
   async function openSidePanel() {
@@ -117,6 +135,34 @@ export function App({
     }
   }
 
+  async function openTable() {
+    if (chrome.runtime?.openOptionsPage) {
+      await chrome.runtime.openOptionsPage()
+      if (surface === 'popup') window.close()
+    }
+  }
+
+  function addExclusion() {
+    const words = parseWordList(excludeDraft)
+    if (words.length === 0) return
+    research.setExcludedWords([...state.excludedWords, ...words])
+    setExcludeDraft('')
+  }
+
+  function toggleMarket(id: string) {
+    const has = selectedMarkets.includes(id)
+    const next = has ? selectedMarkets.filter((item) => item !== id) : [...selectedMarkets, id]
+    if (next.length === 0) return
+    research.setSelectedMarketplaceIds(next)
+  }
+
+  const tabs: Array<{ id: PanelTab; label: string; show: boolean }> = [
+    { id: 'results', label: 'Results', show: true },
+    { id: 'terms', label: 'Terms', show: hasPro('searchTerms') },
+    { id: 'saved', label: 'Saved', show: hasPro('savedKeywords') },
+    { id: 'history', label: 'History', show: hasPro('history') },
+  ]
+
   return (
     <div className={`sprout-app ${frame}`}>
       <header className="flex items-start justify-between gap-2 px-3 pt-3">
@@ -130,30 +176,38 @@ export function App({
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <label className="sr-only" htmlFor="sprout-market">Marketplace</label>
-          <select
-            id="sprout-market"
-            value={state.marketplaceId}
+          <button
+            type="button"
             disabled={running}
-            onChange={(event) => research.setMarketplaceId(event.target.value)}
-            className="h-8 max-w-[168px] rounded-lg border border-line bg-cream px-2 text-xs text-ink disabled:opacity-50"
+            onClick={() => setMarketsOpen((open) => !open)}
+            className="h-8 max-w-[168px] truncate rounded-lg border border-line bg-cream px-2 text-xs text-ink disabled:opacity-50"
+            aria-expanded={marketsOpen}
           >
-            {MARKETPLACES.map((item) => (
-              <option key={item.id} value={item.id}>{item.code} · {item.domain}</option>
-            ))}
-          </select>
+            {marketLabel}
+          </button>
           {onCollapse && (
-            <button
-              type="button"
-              aria-label="Collapse Sprout"
-              onClick={onCollapse}
-              className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-sand hover:text-ink"
-            >
+            <button type="button" aria-label="Collapse Sprout" onClick={onCollapse} className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-sand hover:text-ink">
               <X className="h-4 w-4" />
             </button>
           )}
         </div>
       </header>
+
+      {marketsOpen && (
+        <div className={`grid gap-1 px-3 pt-2 ${surface === 'page' ? 'grid-cols-4' : 'grid-cols-2'}`}>
+          {MARKETPLACES.map((item) => (
+            <label key={item.id} className="flex items-center gap-1.5 text-[11px] text-ink">
+              <input
+                type="checkbox"
+                checked={selectedMarkets.includes(item.id)}
+                disabled={running}
+                onChange={() => toggleMarket(item.id)}
+              />
+              {item.code} · {item.domain}
+            </label>
+          ))}
+        </div>
+      )}
 
       <form
         className="px-3 pt-3"
@@ -179,7 +233,9 @@ export function App({
           {research.runningHere ? (
             <Button type="button" variant="secondary" size="lg" onClick={research.stop}>Stop</Button>
           ) : (
-            <Button type="submit" size="lg" disabled={!state.seed.trim() || research.lockedByOther}>Expand</Button>
+            <Button type="submit" size="lg" disabled={!state.seed.trim() || research.lockedByOther}>
+              {selectedMarkets.length > 1 ? `Expand ${selectedMarkets.length}` : 'Expand'}
+            </Button>
           )}
         </div>
       </form>
@@ -210,16 +266,30 @@ export function App({
         </label>
       </div>
       <p className="truncate px-3 pt-1.5 text-[11px] text-muted" title={plan.example}>
-        <span className="tabular-nums">{plan.count} prefixes</span>
+        <span className="tabular-nums">{selectedMarkets.length > 1 ? `${selectedMarkets.length} × ${plan.count}` : plan.count} prefixes</span>
         <span> · {plan.example}</span>
       </p>
+
+      <div className="mt-2 flex gap-1 px-3" role="tablist">
+        {tabs.filter((item) => item.show).map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            onClick={() => setTab(item.id)}
+            className={`h-7 rounded-md px-2 text-[11px] font-medium ${tab === item.id ? 'bg-ink text-cream' : 'text-muted hover:bg-sand'}`}
+          >
+            {item.label}
+            {item.id === 'saved' && state.savedKeywords.length > 0 ? ` ${state.savedKeywords.length}` : ''}
+          </button>
+        ))}
+      </div>
 
       {research.notice && <Banner tone="warn">{research.notice}</Banner>}
       {run?.status === 'error' && run.error && <Banner tone="error">{run.error}</Banner>}
       {run?.status !== 'error' && run?.warnings[0] && <Banner tone="warn">{run.warnings[0]}</Banner>}
-      {research.lockedByOther && (
-        <Banner tone="warn">Sprout is already expanding a keyword in another panel.</Banner>
-      )}
+      {research.lockedByOther && <Banner tone="warn">Sprout is already expanding a keyword in another panel.</Banner>}
 
       {run?.status === 'running' && (
         <div className="px-3 pt-2">
@@ -228,48 +298,123 @@ export function App({
           </div>
           <p className="mt-1 text-[11px] text-muted" aria-live="polite">
             <span className="tabular-nums">{run.finishedQueries}/{run.totalQueries || '…'}</span>
-            {' · '}
-            {run.recentLabel}
-            {' · '}
+            {' · '}{run.recentLabel}{' · '}
             <span className="tabular-nums">{suggestions.length}</span> keywords
-            {' · '}
-            {run.endpointLabel}
+            {' · '}{run.endpointLabel}
           </p>
         </div>
       )}
 
-      {run && run.status !== 'running' && (
+      {run && run.status !== 'running' && tab === 'results' && (
         <p className="px-3 pt-2 text-[11px] text-muted">
           {run.seed !== state.seed.trim() ? `Showing “${run.seed}”. ` : ''}
           {formatWhen(run.finishedAt ?? run.startedAt)}
           {' · '}
           <span className="tabular-nums">{run.finishedQueries}/{run.totalQueries}</span> prefixes
-          {' · '}
-          {run.endpointLabel}
+          {hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''}
         </p>
       )}
 
       <div className="mt-2 flex min-h-0 flex-1 flex-col">
-        <ResultsList
-          items={filtered}
-          total={suggestions.length}
-          selected={research.selected}
-          filter={research.filter}
-          sort={state.sort}
-          emptyLabel={emptyLabel(run?.status ?? null, state.seed, research.filter, suggestions.length)}
-          onFilter={research.setFilter}
-          onSort={research.setSort}
-          onToggle={(key) => {
-            research.setSelected((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])
-          }}
-          onToggleVisible={(checked) => {
-            const visible = new Set(filtered.map((item) => item.key))
-            research.setSelected((current) => {
-              if (checked) return [...new Set([...current, ...visible])]
-              return current.filter((key) => !visible.has(key))
-            })
-          }}
-        />
+        {tab === 'results' && hasPro('exclusions') && (
+          <form
+            className="mb-2 px-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              addExclusion()
+            }}
+          >
+            <div className="flex items-center gap-1.5">
+              <Input
+                value={excludeDraft}
+                onChange={(event) => setExcludeDraft(event.target.value)}
+                placeholder="Exclude a brand or word"
+                aria-label="Exclude words"
+                className="h-8 text-xs"
+              />
+              <Button type="submit" size="sm" variant="outline" disabled={!excludeDraft.trim()}>Hide</Button>
+            </div>
+            {state.excludedWords.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {state.excludedWords.map((word) => (
+                  <button
+                    key={word}
+                    type="button"
+                    onClick={() => research.setExcludedWords(state.excludedWords.filter((item) => item !== word))}
+                    className="rounded-full bg-sand px-2 py-0.5 text-[10px] text-ink"
+                    title={`Stop hiding “${word}”`}
+                  >
+                    {word} ×
+                  </button>
+                ))}
+              </div>
+            )}
+          </form>
+        )}
+        {tab === 'results' && surface === 'page' && (
+          <KeywordTable
+            items={filtered}
+            total={suggestions.length}
+            selected={research.selected}
+            filter={research.filter}
+            sort={state.sort}
+            starred={starred}
+            fallbackMarketplaceId={run?.marketplaceId ?? state.marketplaceId}
+            emptyLabel={emptyLabel(run?.status ?? null, state.seed, research.filter, suggestions.length)}
+            onFilter={research.setFilter}
+            onSort={research.setSort}
+            onToggle={(key) => research.setSelected((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])}
+            onToggleVisible={(checked) => {
+              const visible = new Set(filtered.map((item) => item.key))
+              research.setSelected((current) => checked ? [...new Set([...current, ...visible])] : current.filter((key) => !visible.has(key)))
+            }}
+            onStar={(item) => void research.toggleStar(item)}
+          />
+        )}
+        {tab === 'results' && surface !== 'page' && (
+          <ResultsList
+            items={filtered}
+            total={suggestions.length}
+            selected={research.selected}
+            filter={research.filter}
+            sort={state.sort}
+            emptyLabel={emptyLabel(run?.status ?? null, state.seed, research.filter, suggestions.length)}
+            starred={starred}
+            fallbackMarketplaceId={run?.marketplaceId ?? state.marketplaceId}
+            onFilter={research.setFilter}
+            onSort={research.setSort}
+            onToggle={(key) => research.setSelected((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])}
+            onToggleVisible={(checked) => {
+              const visible = new Set(filtered.map((item) => item.key))
+              research.setSelected((current) => checked ? [...new Set([...current, ...visible])] : current.filter((key) => !visible.has(key)))
+            }}
+            onStar={(item) => void research.toggleStar(item)}
+          />
+        )}
+        {tab === 'terms' && (
+          <SearchTermsPanel
+            phrases={suggestions.map((item) => item.value)}
+            listingText={state.listingText}
+            excluded={state.excludedWords}
+            dropped={state.droppedSearchWords}
+            byteLimit={state.searchTermByteLimit}
+            onListingText={research.setListingText}
+            onByteLimit={research.setSearchTermByteLimit}
+            onDrop={research.dropSearchWord}
+            onClearDropped={research.clearDroppedSearchWords}
+          />
+        )}
+        {tab === 'saved' && <SavedPanel items={state.savedKeywords} onRemove={(id) => void research.removeSaved(id)} />}
+        {tab === 'history' && (
+          <HistoryPanel
+            items={state.history}
+            onOpen={(id) => {
+              research.openHistory(id)
+              setTab('results')
+            }}
+            onDelete={(id) => void research.deleteHistory(id)}
+          />
+        )}
       </div>
 
       <footer className="border-t border-line bg-cream/70 px-3 py-2.5">
@@ -280,8 +425,14 @@ export function App({
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => download('csv')} disabled={exportCount === 0 || !run}>CSV</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => download('xlsx')} disabled={exportCount === 0 || !run}>XLSX</Button>
-          {surface !== 'sidepanel' && (
-            <Button type="button" size="sm" variant="ghost" className="ml-auto px-2" onClick={() => void openSidePanel()}>
+          {surface !== 'page' && (
+            <Button type="button" size="sm" variant="ghost" className="ml-auto px-2" onClick={() => void openTable()}>
+              <Table2 className="h-3.5 w-3.5" aria-hidden />
+              Table
+            </Button>
+          )}
+          {surface === 'popup' && (
+            <Button type="button" size="sm" variant="ghost" className="px-2" onClick={() => void openSidePanel()}>
               <PanelRight className="h-3.5 w-3.5" aria-hidden />
               Panel
             </Button>
@@ -289,7 +440,7 @@ export function App({
         </div>
         <p className="mt-1.5 text-[10px] leading-snug text-muted">
           {selectedItems.length > 0 ? 'Copy and export use the checked rows.' : 'Copy and export use the visible list.'}
-          {' '}Pro later: every marketplace, and run history.
+          {' '}Everything stays in this browser.
         </p>
       </footer>
     </div>
@@ -306,13 +457,4 @@ function emptyLabel(status: string | null, seed: string, filter: string, count: 
   if (status === 'running') return `Asking Amazon about “${seed.trim() || 'your seed'}”…`
   if (status === 'done' || status === 'cancelled' || status === 'error') return 'No suggestions in this list.'
   return 'Enter a seed keyword. Sprout asks Amazon for that prefix, then for every letter and digit — the same autocomplete shoppers see.'
-}
-
-function formatWhen(ms: number): string {
-  return new Intl.DateTimeFormat(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(ms)
 }

@@ -36,7 +36,10 @@ html[data-surface="popup"] #root {
 
 html[data-surface="sidepanel"],
 html[data-surface="sidepanel"] body,
-html[data-surface="sidepanel"] #root {
+html[data-surface="sidepanel"] #root,
+html[data-surface="page"],
+html[data-surface="page"] body,
+html[data-surface="page"] #root {
   width: 100%;
   height: 100%;
   overflow: hidden;

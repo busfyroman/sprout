@@ -214,11 +214,17 @@ describe('export', () => {
 })
 
 describe('pro', () => {
-  it('keeps multi-marketplace and history behind the free flag', async () => {
-    assert.equal(hasPro('history'), false)
-    assert.deepEqual(appendHistory([], fakeHistory().entry), [])
-    const kept = appendHistory([], fakeHistory().entry, { history: true, multiMarketplace: false })
-    assert.equal(kept.length, 1)
+  it('ships every feature on, and still refuses when a flag is off', async () => {
+    assert.equal(hasPro('history'), true)
+    assert.equal(hasPro('multiMarketplace'), true)
+    assert.equal(appendHistory([], fakeHistory().entry).length, 1)
+    assert.deepEqual(appendHistory([], fakeHistory().entry, {
+      history: false,
+      multiMarketplace: true,
+      searchTerms: true,
+      savedKeywords: true,
+      exclusions: true,
+    }), [])
     await assert.rejects(
       expandAllMarketplaces({
         seed: 'yoga',
@@ -226,6 +232,13 @@ describe('pro', () => {
         includeSpace: false,
         signal: new AbortController().signal,
         onMarketplace: () => {},
+        entitlements: {
+          history: true,
+          multiMarketplace: false,
+          searchTerms: true,
+          savedKeywords: true,
+          exclusions: true,
+        },
       }),
       ProRequiredError,
     )

@@ -4,7 +4,7 @@ Sprout is a keyword research extension. It does not have accounts, analytics, ad
 
 ## What stays on the device
 
-The last seed keyword, marketplace, expansion options, and the latest result list are stored in `chrome.storage.local` on that browser profile. Nothing in that store is sent to the developer. Uninstalling the extension removes it. There is no sync account.
+The last seed keyword, marketplace choices, expansion options, excluded words, search-term settings, and the latest result list are stored in `chrome.storage.local` on that browser profile. Starred keywords and the last 20 runs are stored in IndexedDB in the same profile. Nothing in either store is sent to the developer. Uninstalling the extension removes both. There is no account and no sync.
 
 ## What is sent, and where
 
@@ -13,7 +13,9 @@ When you press Expand, Sprout requests public Amazon autocomplete. The only quer
 - `https://completion.amazon.<marketplace>/api/2017/suggestions`
 - and, only if that host fails or returns something that is not suggestion JSON, `https://www.amazon.<marketplace>/suggestions`
 
-Cookies are not attached (`credentials: "omit"`). No other company receives the keyword. The extension does not read orders, reviews, payments, or your Amazon account.
+Cookies are not attached (`credentials: "omit"`). No other company receives the keyword from Sprout. The extension does not read orders, reviews, payments, or your Amazon account. It does not request or store search volume or CPC; it has no source for those numbers.
+
+If you click Amazon, Google, or Trends on a keyword, the browser opens that site with the keyword in the link. That visit is between you and that site. Sprout does not observe it.
 
 ## What the on-page panel reads
 
@@ -39,7 +41,7 @@ Sprout je rozšírenie na prieskum kľúčových slov. Nemá účty, analytiku, 
 
 ## Čo ostáva v zariadení
 
-Posledný seed, trhovisko, voľby rozšírenia a posledný zoznam výsledkov sú v `chrome.storage.local` v danom profile prehliadača. Tento obsah sa vývojárovi neposiela. Odinštalovanie rozšírenia ho zmaže. Nie je naviazaný na žiadny účet.
+Posledný seed, zvolené trhoviská, voľby rozšírenia, vylúčené slová, nastavenie search terms a posledný zoznam výsledkov sú v `chrome.storage.local` v danom profile prehliadača. Označené kľúčové slová a posledných 20 behov sú v IndexedDB v tom istom profile. Ani jeden z týchto úložísk sa vývojárovi neposiela. Odinštalovanie rozšírenia zmaže obe. Nie je tu účet ani synchronizácia.
 
 ## Čo sa posiela a kam
 
@@ -48,7 +50,9 @@ Po stlačení Expand Sprout požiada o verejný Amazon autocomplete. Obsahom dop
 - `https://completion.amazon.<trhovisko>/api/2017/suggestions`
 - a iba keď tento hostiteľ zlyhá alebo nevráti JSON návrhov, na `https://www.amazon.<trhovisko>/suggestions`
 
-Cookies sa neprikladajú (`credentials: "omit"`). Kľúčové slovo nedostáva žiadna iná firma. Rozšírenie nečíta objednávky, recenzie, platby ani účet na Amazone.
+Cookies sa neprikladajú (`credentials: "omit"`). Sprout neposiela kľúčové slovo žiadnej inej firme. Rozšírenie nečíta objednávky, recenzie, platby ani účet na Amazone. Nepýta si ani neukladá objem vyhľadávania ani CPC; nemá na ne zdroj.
+
+Keď kliknete na Amazon, Google alebo Trends pri slove, prehliadač otvorí tú stránku s kľúčovým slovom v odkaze. Tá návšteva je medzi vami a tou stránkou. Sprout ju nesleduje.
 
 ## Čo číta panel na stránke
 

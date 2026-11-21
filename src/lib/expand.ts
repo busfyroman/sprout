@@ -50,7 +50,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
   try {
     const probe = await probeSeed(input.marketplace, queries[0], input.signal, client)
     const suggestions = new Map<string, Suggestion>()
-    addQuerySuggestions(suggestions, queries[0], probe.batch.values)
+    addQuerySuggestions(suggestions, queries[0], probe.batch.values, input.marketplace.id)
     let endpoint: EndpointKind = probe.endpoint
     let laterFallback = false
     let failedQueries = 0
@@ -58,7 +58,11 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
     let firstFailure = ''
 
     const publish = (status: RunSnapshot['status'], extra?: { recentLabel?: string; error?: string | null }) => {
-      const copied = [...suggestions.values()].map((item) => ({ ...item, sources: [...item.sources] }))
+      const copied = [...suggestions.values()].map((item) => ({
+        ...item,
+        sources: [...item.sources],
+        marketplaces: [...(item.marketplaces ?? [])],
+      }))
       emit({
         ...snapshot,
         suggestions: copied,
@@ -93,7 +97,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
       try {
         const batch = await fetchPreferred(input.marketplace, query.text, endpoint, input.signal, client)
         if (batch.endpoint !== endpoint) laterFallback = true
-        addQuerySuggestions(suggestions, query, batch.values)
+        addQuerySuggestions(suggestions, query, batch.values, input.marketplace.id)
       } catch (error) {
         if (isAbortError(error) || input.signal.aborted) throw error
         failedQueries += 1
@@ -140,6 +144,7 @@ function createRun(input: ExpandInput, seed: string, totalQueries: number): RunS
   return {
     seed,
     marketplaceId: input.marketplace.id,
+    marketplaceIds: [input.marketplace.id],
     mode: input.mode,
     includeSpace: input.includeSpace,
     suggestions: [],
@@ -205,13 +210,18 @@ async function fetchPreferred(
   }
 }
 
-function addQuerySuggestions(map: Map<string, Suggestion>, query: QuerySpec, values: string[]): void {
+function addQuerySuggestions(
+  map: Map<string, Suggestion>,
+  query: QuerySpec,
+  values: string[],
+  marketplaceId: string,
+): void {
   for (const value of values) {
     addSuggestion(map, value, {
       label: query.label,
       exportLabel: query.exportLabel,
       index: query.index,
-    })
+    }, marketplaceId)
   }
 }
 

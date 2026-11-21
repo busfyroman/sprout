@@ -8,18 +8,48 @@ export function addSuggestion(
   map: Map<string, Suggestion>,
   value: string,
   source: SuggestionSource,
+  marketplaceId?: string,
 ): void {
   const trimmed = value.trim().replace(/\s+/g, ' ')
   if (!trimmed) return
   const key = trimmed.toLowerCase()
   const existing = map.get(key)
   if (!existing) {
-    map.set(key, { key, value: trimmed, sources: [source] })
+    map.set(key, {
+      key,
+      value: trimmed,
+      sources: [source],
+      marketplaces: marketplaceId ? [marketplaceId] : [],
+    })
     return
   }
   if (!existing.sources.some((item) => item.label === source.label)) {
     existing.sources.push(source)
     existing.sources.sort((a, b) => a.index - b.index)
+  }
+  if (marketplaceId && !existing.marketplaces?.includes(marketplaceId)) {
+    existing.marketplaces = [...(existing.marketplaces ?? []), marketplaceId]
+  }
+}
+
+export function mergeSuggestion(map: Map<string, Suggestion>, suggestion: Suggestion): void {
+  const existing = map.get(suggestion.key)
+  if (!existing) {
+    map.set(suggestion.key, {
+      ...suggestion,
+      sources: [...suggestion.sources],
+      marketplaces: [...(suggestion.marketplaces ?? [])],
+    })
+    return
+  }
+  for (const source of suggestion.sources) {
+    if (!existing.sources.some((item) => item.label === source.label)) existing.sources.push(source)
+  }
+  existing.sources.sort((a, b) => a.index - b.index)
+  for (const marketplaceId of suggestion.marketplaces ?? []) {
+    if (!existing.marketplaces?.includes(marketplaceId)) {
+      existing.marketplaces = [...(existing.marketplaces ?? []), marketplaceId]
+    }
   }
 }
 
@@ -41,6 +71,24 @@ function compareSuggestions(a: Suggestion, b: Suggestion, sort: SortKey): number
   const ai = a.sources[0]?.index ?? 0
   const bi = b.sources[0]?.index ?? 0
   return ai - bi || compareText(a.value, b.value)
+}
+
+export function suggestionMarkets(item: Suggestion, fallbackId: string): string[] {
+  return item.marketplaces && item.marketplaces.length > 0 ? item.marketplaces : [fallbackId]
+}
+
+export function isExcluded(value: string, excluded: readonly string[]): boolean {
+  const haystack = ` ${normalizeKey(value)} `
+  return excluded.some((entry) => {
+    const needle = normalizeKey(entry)
+    if (!needle) return false
+    return haystack.includes(` ${needle} `)
+  })
+}
+
+export function applyExclusions(items: readonly Suggestion[], excluded: readonly string[]): Suggestion[] {
+  if (excluded.length === 0) return [...items]
+  return items.filter((item) => !isExcluded(item.value, excluded))
 }
 
 export function filterSuggestions(items: readonly Suggestion[], query: string): Suggestion[] {

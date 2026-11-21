@@ -14,6 +14,8 @@ export interface Suggestion {
   key: string
   value: string
   sources: SuggestionSource[]
+  /** Marketplace ids that returned this phrase. Older saved runs may omit it. */
+  marketplaces?: string[]
 }
 
 export interface RunSnapshot {
@@ -33,6 +35,16 @@ export interface RunSnapshot {
   startedAt: number
   finishedAt: number | null
   recentLabel: string
+  /** Every marketplace included in this run. Falls back to marketplaceId. */
+  marketplaceIds?: string[]
+}
+
+export interface SavedKeyword {
+  id: string
+  value: string
+  marketplaceIds: string[]
+  seed: string
+  savedAt: number
 }
 
 export interface HistoryEntry {
@@ -50,11 +62,19 @@ export interface SproutState {
   version: 1
   seed: string
   marketplaceId: string
+  /** Marketplaces included the next time Expand is pressed. */
+  selectedMarketplaceIds: string[]
   mode: ExpandMode
   includeSpace: boolean
   sort: SortKey
   run: RunSnapshot | null
   runLock: RunLock | null
+  /** Kept in memory. Full runs live in IndexedDB, not in this blob. */
   history: HistoryEntry[]
+  savedKeywords: SavedKeyword[]
+  excludedWords: string[]
+  listingText: string
+  searchTermByteLimit: number
+  droppedSearchWords: string[]
   writerId?: string
 }
