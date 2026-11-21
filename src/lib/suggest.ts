@@ -41,6 +41,31 @@ export function errorText(error: unknown): string {
   return 'Unknown error'
 }
 
+export type FailureKind = 'network' | 'http' | 'unexpected' | 'aborted'
+
+/** Network and HTTP failures come from Amazon. Anything else is a bug in Sprout. */
+export function describeFailure(error: unknown): { kind: FailureKind; message: string } {
+  if (error instanceof AmazonSuggestError) return { kind: error.kind, message: error.message }
+  if (isAbortError(error)) return { kind: 'aborted', message: 'The expansion was stopped.' }
+  const message = error instanceof Error ? error.message.trim() : 'Unknown error'
+  if (/illegal invocation|is not a function/i.test(message)) {
+    return {
+      kind: 'unexpected',
+      message: `Sprout hit an internal error before the request was sent (${message}). This is not a network or Amazon failure.`,
+    }
+  }
+  if (error instanceof TypeError) {
+    return { kind: 'network', message: `Couldn’t reach Amazon (${message}).` }
+  }
+  return { kind: 'unexpected', message: `Sprout hit an unexpected error (${message}). This is not a network or Amazon failure.` }
+}
+
+export function formatFailedPrefixes(prefixes: readonly string[], limit = 6): string {
+  const shown = prefixes.slice(0, limit).map((prefix) => `“${prefix}”`).join(', ')
+  const extra = prefixes.length > limit ? ` and ${prefixes.length - limit} more` : ''
+  return `${shown}${extra}`
+}
+
 export type SleepFn = (ms: number, signal: AbortSignal) => Promise<void>
 
 export function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -116,18 +141,27 @@ export function createClientContext(overrides?: {
   fetchImpl?: typeof fetch
 }): ClientContext {
   const sleepFn = overrides?.sleepFn ?? sleep
+  const fetchImpl = overrides?.fetchImpl ?? callGlobalFetch
   return {
     retries: overrides?.retries ?? REQUEST_LIMITS.retries,
     backoffBaseMs: overrides?.backoffBaseMs ?? REQUEST_LIMITS.backoffBaseMs,
     timeoutMs: overrides?.timeoutMs ?? REQUEST_LIMITS.timeoutMs,
     sleepFn,
-    fetchImpl: overrides?.fetchImpl ?? fetch,
+    fetchImpl,
     pacer: new Pacer(
       overrides?.gapMs ?? REQUEST_LIMITS.gapMs,
       overrides?.maxGapMs ?? REQUEST_LIMITS.maxGapMs,
       sleepFn,
     ),
   }
+}
+
+/**
+ * `const f = fetch; f(url)` throws "Illegal invocation" in Chrome because
+ * `this` is no longer the window. Call the global as a property access.
+ */
+export function callGlobalFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return globalThis.fetch(input, init)
 }
 
 export async function fetchBatch(
@@ -192,8 +226,8 @@ async function fetchOnce(
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new AmazonSuggestError(`Timed out waiting for ${host}.`, { host, kind: 'network' })
     }
-    const detail = error instanceof Error ? error.message : 'Network error'
-    throw new AmazonSuggestError(`Couldn’t reach ${host}. ${detail}`, { host, kind: 'network' })
+    const failure = describeFailure(error)
+    throw new AmazonSuggestError(failure.message, { host, kind: failure.kind === 'aborted' ? 'network' : failure.kind })
   }
 
   if (!response.ok) {
@@ -247,10 +281,21 @@ function httpMessage(status: number, host: string): string {
 }
 
 export class ProbeFailedError extends Error {
+  readonly kind: FailureKind
+
   constructor(marketplace: Marketplace, primary: unknown, secondary: unknown) {
-    super(
-      `Couldn’t load suggestions for ${marketplace.domain}. ${marketplace.completionHost}: ${errorText(primary)} ${marketplace.storefrontHost}: ${errorText(secondary)} The suggestion endpoint may have changed, or this network is being blocked.`,
-    )
+    const left = describeFailure(primary)
+    const right = describeFailure(secondary)
+    const kind: FailureKind = left.kind === 'unexpected' || right.kind === 'unexpected'
+      ? 'unexpected'
+      : left.kind === 'http' || right.kind === 'http'
+        ? 'http'
+        : 'network'
+    const message = kind === 'unexpected'
+      ? `Couldn’t load suggestions for ${marketplace.domain}. ${left.kind === 'unexpected' ? left.message : right.message}`
+      : `Couldn’t load suggestions for ${marketplace.domain}. ${marketplace.completionHost}: ${left.message} ${marketplace.storefrontHost}: ${right.message}`
+    super(message)
     this.name = 'ProbeFailedError'
+    this.kind = kind
   }
 }

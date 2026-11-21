@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LOCK_STALE_MS, MAX_SEED_LENGTH } from '../lib/limits'
-import { deleteHistoryEntry, listHistory, listSaved, removeSaved, saveHistoryEntry, toggleSaved, LIBRARY_TICK } from '../lib/library'
+import { deleteHistoryEntry, listHistory, listSaved, removeSaved, saveHistoryEntry, shouldRecordHistory, toggleSaved, LIBRARY_TICK } from '../lib/library'
 import { getMarketplace } from '../lib/marketplaces'
 import { expandSelectedMarketplaces, hasPro } from '../lib/pro'
-import { cleanSeed } from '../lib/queries'
+import { cleanSeed, sanitizeRestoredSeed } from '../lib/queries'
 import { parseWordList } from '../lib/search-terms'
-import { hasChromeStorage, defaultState, loadState, normalizeState, saveState, watchState } from '../lib/storage'
+import { hasChromeStorage, defaultState, loadSettings, loadState, normalizeState, saveSettings, saveState, watchSettings, watchState, type SproutSettings } from '../lib/storage'
 import type { ExpandMode, SortKey, SproutState, Suggestion } from '../lib/types'
 
 export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: string }) {
@@ -17,6 +17,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
   const [notice, setNotice] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const stateRef = useRef(state)
+  const readyRef = useRef(false)
   const abortRef = useRef<AbortController | null>(null)
   const saveTimer = useRef<number | null>(null)
   const rev = useRef(0)
@@ -65,47 +66,76 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     }, 400)
   }, [flush])
 
+  const applySettings = useCallback((partial: Partial<SproutSettings>) => {
+    const next = { ...stateRef.current, ...partial }
+    stateRef.current = next
+    setState(next)
+    void saveSettings(partial)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    let unwatch = () => {}
+    let pendingSettings: SproutSettings | null = null
+    const unwatchSettings = watchSettings((settings) => {
+      if (cancelled) return
+      if (!readyRef.current) {
+        pendingSettings = settings
+        return
+      }
+      setState((current) => {
+        const next = { ...current, ...settings }
+        stateRef.current = next
+        return next
+      })
+    })
+    const unwatchRun = watchState((incoming) => {
+      if (cancelled || incoming.writerId === ownerId.current) return
+      setState((current) => {
+        const next = { ...current, run: incoming.run, runLock: incoming.runLock }
+        stateRef.current = next
+        return next
+      })
+    })
     void (async () => {
       const stored = normalizeState(await loadState())
+      const settings = pendingSettings ?? await loadSettings()
       let history = stored.history
       let saved = stored.savedKeywords
       try {
-        const [fromDbHistory, fromDbSaved] = await Promise.all([listHistory(), listSaved()])
-        if (fromDbHistory.length > 0) history = fromDbHistory
-        if (fromDbSaved.length > 0) saved = fromDbSaved
+        const [storedHistory, storedSaved] = await Promise.all([listHistory(), listSaved()])
+        if (storedHistory.length > 0) history = storedHistory
+        if (storedSaved.length > 0) saved = storedSaved
       } catch {
-        // IndexedDB can be unavailable. The chrome.storage copy, if any, still shows.
+        // Library storage is best-effort. The current run still works.
       }
       if (cancelled) return
-      let next = { ...stored, history, savedKeywords: saved }
+      let next = { ...stored, ...settings, history, savedKeywords: saved }
       const lockFresh = stored.runLock != null && Date.now() - stored.runLock.heartbeat < LOCK_STALE_MS
-      if (!lockFresh) {
-        if (options?.pageMarketplaceId) next = { ...next, marketplaceId: getMarketplace(options.pageMarketplaceId).id }
-        if (options?.pageSeed) next = { ...next, seed: cleanSeed(options.pageSeed) }
+      const pageSeed = options?.pageSeed ? sanitizeRestoredSeed(options.pageSeed) : ''
+      if (!lockFresh && pageSeed) next = { ...next, seed: pageSeed }
+      if (!lockFresh && options?.pageMarketplaceId) {
+        const marketplaceId = getMarketplace(options.pageMarketplaceId).id
+        next = { ...next, marketplaceId, selectedMarketplaceIds: [marketplaceId] }
       }
       stateRef.current = next
       setState(next)
+      readyRef.current = true
       setReady(true)
-      if (next.seed !== stored.seed || next.marketplaceId !== stored.marketplaceId) {
-        persist(next, true)
-      }
-      unwatch = watchState((incoming) => {
-        if (cancelled || incoming.writerId === ownerId.current) return
-        setState((current) => {
-          const next = { ...incoming, history: current.history, savedKeywords: current.savedKeywords }
-          stateRef.current = next
-          return next
+      if (pageSeed || options?.pageMarketplaceId) {
+        void saveSettings({
+          seed: next.seed,
+          marketplaceId: next.marketplaceId,
+          selectedMarketplaceIds: next.selectedMarketplaceIds,
         })
-      })
+      }
     })()
     return () => {
       cancelled = true
-      unwatch()
+      readyRef.current = false
+      unwatchSettings()
+      unwatchRun()
     }
-  }, [options?.pageMarketplaceId, options?.pageSeed, persist])
+  }, [options?.pageMarketplaceId, options?.pageSeed])
 
   const runningHere = state.run?.status === 'running' && state.runLock?.ownerId === ownerId.current
   const lockedByOther = Boolean(
@@ -225,7 +255,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
             },
             settled,
           )
-          if (settled && hasPro('history') && run.suggestions.length > 0) {
+          if (settled && hasPro('history') && shouldRecordHistory(run.status)) {
             void saveHistoryEntry({ id: String(run.startedAt), savedAt: Date.now(), run }).then((history) => {
               setState((current) => {
                 const next = { ...current, history }
@@ -263,23 +293,23 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     patch,
     start,
     stop,
-    setSeed: (seed: string) => patch({ seed: seed.slice(0, MAX_SEED_LENGTH) }),
+    setSeed: (seed: string) => applySettings({ seed: sanitizeRestoredSeed(seed.slice(0, MAX_SEED_LENGTH)) }),
     setSelectedMarketplaceIds: (ids: string[]) => {
       const unique = [...new Set(ids.map((id) => getMarketplace(id).id))]
       const selected = unique.length > 0 ? unique : [stateRef.current.marketplaceId]
-      patch({ selectedMarketplaceIds: selected, marketplaceId: selected[0] })
+      applySettings({ selectedMarketplaceIds: selected, marketplaceId: selected[0] })
     },
-    setMode: (mode: ExpandMode) => patch({ mode }),
-    setIncludeSpace: (includeSpace: boolean) => patch({ includeSpace }),
-    setSort: (sort: SortKey) => patch({ sort }),
-    setExcludedWords: (words: string[]) => patch({ excludedWords: parseWordList(words.join('\n')) }),
-    setListingText: (listingText: string) => patch({ listingText }),
-    setSearchTermByteLimit: (searchTermByteLimit: number) => patch({ searchTermByteLimit }),
+    setMode: (mode: ExpandMode) => applySettings({ mode }),
+    setIncludeSpace: (includeSpace: boolean) => applySettings({ includeSpace }),
+    setSort: (sort: SortKey) => applySettings({ sort }),
+    setExcludedWords: (words: string[]) => applySettings({ excludedWords: parseWordList(words.join('\n')) }),
+    setListingText: (listingText: string) => applySettings({ listingText }),
+    setSearchTermByteLimit: (searchTermByteLimit: number) => applySettings({ searchTermByteLimit }),
     dropSearchWord: (word: string) => {
       const dropped = parseWordList([...stateRef.current.droppedSearchWords, word].join('\n'))
-      patch({ droppedSearchWords: dropped })
+      applySettings({ droppedSearchWords: dropped })
     },
-    clearDroppedSearchWords: () => patch({ droppedSearchWords: [] }),
+    clearDroppedSearchWords: () => applySettings({ droppedSearchWords: [] }),
     toggleStar: async (item: Suggestion) => {
       if (!hasPro('savedKeywords')) return
       const saved = await toggleSaved({
@@ -306,14 +336,15 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     openHistory: (id: string) => {
       const entry = stateRef.current.history.find((item) => item.id === id)
       if (!entry) return
-      patch({
-        run: entry.run,
+      const selectedMarketplaceIds = entry.run.marketplaceIds?.length ? entry.run.marketplaceIds : [entry.run.marketplaceId]
+      applySettings({
         seed: entry.run.seed,
         marketplaceId: entry.run.marketplaceId,
-        selectedMarketplaceIds: entry.run.marketplaceIds?.length ? entry.run.marketplaceIds : [entry.run.marketplaceId],
+        selectedMarketplaceIds,
         mode: entry.run.mode,
         includeSpace: entry.run.includeSpace,
       })
+      persist({ ...stateRef.current, run: entry.run }, true)
     },
     deleteHistory: async (id: string) => {
       const history = await deleteHistoryEntry(id)

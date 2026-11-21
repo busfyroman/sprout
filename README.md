@@ -27,7 +27,7 @@ npm test
 npm run verify:live
 ```
 
-`npm test` covers query building, deduping, response parsing, fallback, CSV/XLSX, and the Pro gate. `npm run verify:live` calls Amazon’s completion API for `yoga mat` on amazon.com and amazon.de and fails if the payload is not real suggestion JSON.
+`npm test` covers query building, deduping, response parsing, fallback, CSV/XLSX, the feature flags, and a regression that calls `fetch` the way Chrome does (so a detached `fetch` cannot ship again). `npm run verify:live` calls Amazon’s completion API for `yoga mat` on amazon.com and amazon.de. `npm run test:browser` loads the built extension in Playwright’s Chromium and runs the panel, including a real expand.
 
 A zip of the built folder is produced with:
 

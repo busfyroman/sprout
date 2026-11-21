@@ -68,6 +68,7 @@ export async function expandSelectedMarketplaces(
   const combined = new Map<string, Suggestion>()
   const warnings: string[] = []
   let failedQueries = 0
+  let failedPrefixes: string[] = []
   let finishedQueries = 0
   let endpointLabel = getMarketplace(selected[0]).completionHost
   let usedFallback = false
@@ -85,6 +86,7 @@ export async function expandSelectedMarketplaces(
       totalQueries: selected.length * perMarket,
       finishedQueries: patch.finishedQueries ?? 0,
       failedQueries: patch.failedQueries ?? failedQueries,
+      failedPrefixes: patch.failedPrefixes ?? failedPrefixes,
       endpointLabel: patch.endpointLabel ?? endpointLabel,
       usedFallback: patch.usedFallback ?? usedFallback,
       warnings: patch.warnings ?? warnings,
@@ -122,6 +124,7 @@ export async function expandSelectedMarketplaces(
             suggestions: [...view.values()],
             finishedQueries,
             failedQueries: failedQueries + run.failedQueries,
+            failedPrefixes: [...failedPrefixes, ...(run.failedPrefixes ?? [])],
             endpointLabel: run.endpointLabel,
             usedFallback,
             recentLabel: selected.length > 1 ? `${marketplace.code} · ${run.recentLabel}` : run.recentLabel,
@@ -131,6 +134,7 @@ export async function expandSelectedMarketplaces(
       })
       for (const suggestion of result.suggestions) mergeSuggestion(combined, suggestion)
       failedQueries += result.failedQueries
+      failedPrefixes = [...failedPrefixes, ...(result.failedPrefixes ?? [])]
       endpointLabel = result.endpointLabel || endpointLabel
       usedFallback = usedFallback || result.usedFallback
       if (result.status === 'cancelled') {

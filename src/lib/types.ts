@@ -27,6 +27,8 @@ export interface RunSnapshot {
   totalQueries: number
   finishedQueries: number
   failedQueries: number
+  /** Prefix strings that did not return a usable response. */
+  failedPrefixes?: string[]
   endpointLabel: string
   usedFallback: boolean
   warnings: string[]

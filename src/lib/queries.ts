@@ -13,8 +13,17 @@ const LETTERS = 'abcdefghijklmnopqrstuvwxyz'
 const DIGITS = '0123456789'
 export const EXPAND_CHARS = [...LETTERS, ...DIGITS]
 
+const LEGACY_PLACEHOLDER = /^yoga mat,\s*low content book\b/i
+
 export function cleanSeed(value: string): string {
   return value.replace(/\s+/g, ' ').trim().slice(0, MAX_SEED_LENGTH)
+}
+
+/** The old placeholder looked like a saved multi-keyword seed. Never restore it. */
+export function sanitizeRestoredSeed(value: string): string {
+  const cleaned = cleanSeed(value)
+  if (LEGACY_PLACEHOLDER.test(cleaned)) return ''
+  return cleaned
 }
 
 export function countQueries(mode: ExpandMode, includeSpace: boolean): number {

@@ -1,7 +1,23 @@
 import { DEFAULT_SEARCH_TERM_BYTES, LOCK_STALE_MS } from './limits'
 import { getMarketplace } from './marketplaces'
+import { sanitizeRestoredSeed } from './queries'
 import { parseWordList } from './search-terms'
 import type { ExpandMode, RunSnapshot, SortKey, SproutState } from './types'
+
+export const SETTINGS_KEY = 'sprout.settings'
+
+export interface SproutSettings {
+  seed: string
+  marketplaceId: string
+  selectedMarketplaceIds: string[]
+  mode: ExpandMode
+  includeSpace: boolean
+  sort: SortKey
+  excludedWords: string[]
+  listingText: string
+  searchTermByteLimit: number
+  droppedSearchWords: string[]
+}
 
 export const STORAGE_KEY = 'sprout.v1'
 
@@ -81,7 +97,7 @@ export function normalizeState(raw: unknown): SproutState {
   }
   return {
     version: 1,
-    seed: typeof value.seed === 'string' ? value.seed : '',
+    seed: typeof value.seed === 'string' ? sanitizeRestoredSeed(value.seed) : '',
     marketplaceId,
     selectedMarketplaceIds,
     mode,
@@ -97,6 +113,65 @@ export function normalizeState(raw: unknown): SproutState {
     droppedSearchWords: Array.isArray(value.droppedSearchWords) ? parseWordList(value.droppedSearchWords.join('\n')) : [],
     writerId: typeof value.writerId === 'string' ? value.writerId : undefined,
   }
+}
+
+export function settingsFromState(state: SproutState): SproutSettings {
+  return {
+    seed: state.seed,
+    marketplaceId: state.marketplaceId,
+    selectedMarketplaceIds: state.selectedMarketplaceIds,
+    mode: state.mode,
+    includeSpace: state.includeSpace,
+    sort: state.sort,
+    excludedWords: state.excludedWords,
+    listingText: state.listingText,
+    searchTermByteLimit: state.searchTermByteLimit,
+    droppedSearchWords: state.droppedSearchWords,
+  }
+}
+
+export function normalizeSettings(raw: unknown, fallback?: SproutSettings): SproutSettings {
+  const base = fallback ?? settingsFromState(defaultState())
+  const value = raw && typeof raw === 'object' ? raw as Partial<SproutSettings> : {}
+  const marketplaceId = typeof value.marketplaceId === 'string' ? getMarketplace(value.marketplaceId).id : base.marketplaceId
+  return {
+    seed: typeof value.seed === 'string' ? sanitizeRestoredSeed(value.seed) : base.seed,
+    marketplaceId,
+    selectedMarketplaceIds: normalizeIds(value.selectedMarketplaceIds, marketplaceId),
+    mode: MODES.has(value.mode as ExpandMode) ? value.mode as ExpandMode : base.mode,
+    includeSpace: typeof value.includeSpace === 'boolean' ? value.includeSpace : base.includeSpace,
+    sort: SORTS.has(value.sort as SortKey) ? value.sort as SortKey : base.sort,
+    excludedWords: Array.isArray(value.excludedWords) ? parseWordList(value.excludedWords.join('\n')) : base.excludedWords,
+    listingText: typeof value.listingText === 'string' ? value.listingText : base.listingText,
+    searchTermByteLimit: typeof value.searchTermByteLimit === 'number'
+      ? Math.min(1000, Math.max(20, Math.round(value.searchTermByteLimit)))
+      : base.searchTermByteLimit,
+    droppedSearchWords: Array.isArray(value.droppedSearchWords) ? parseWordList(value.droppedSearchWords.join('\n')) : base.droppedSearchWords,
+  }
+}
+
+export async function loadSettings(): Promise<SproutSettings> {
+  if (!hasChromeStorage()) return settingsFromState(defaultState())
+  const bag = await chrome.storage.local.get([STORAGE_KEY, SETTINGS_KEY])
+  const fromRun = settingsFromState(normalizeState(bag[STORAGE_KEY]))
+  if (bag[SETTINGS_KEY] == null) return fromRun
+  return normalizeSettings(bag[SETTINGS_KEY], fromRun)
+}
+
+export async function saveSettings(partial: Partial<SproutSettings>): Promise<SproutSettings> {
+  const next = normalizeSettings({ ...(await loadSettings()), ...partial })
+  if (hasChromeStorage()) await chrome.storage.local.set({ [SETTINGS_KEY]: next })
+  return next
+}
+
+export function watchSettings(onChange: (settings: SproutSettings) => void): () => void {
+  if (!hasChromeStorage()) return () => {}
+  const listener: Parameters<typeof chrome.storage.onChanged.addListener>[0] = (changes, area) => {
+    if (area !== 'local' || !changes[SETTINGS_KEY]) return
+    onChange(normalizeSettings(changes[SETTINGS_KEY].newValue))
+  }
+  chrome.storage.onChanged.addListener(listener)
+  return () => chrome.storage.onChanged.removeListener(listener)
 }
 
 function normalizeIds(value: unknown, fallback: string): string[] {

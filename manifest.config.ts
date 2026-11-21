@@ -12,7 +12,7 @@ export default defineManifest({
   manifest_version: 3,
   name: 'Sprout — Amazon Suggestion Expander',
   short_name: 'Sprout',
-  version: '0.2.0',
+  version: '0.2.1',
   description: 'Turn one Amazon seed into a–z and 0–9 autocomplete suggestions for seller, KDP, and Merch research.',
   minimum_chrome_version: '120',
   action: {

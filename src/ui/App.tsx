@@ -221,14 +221,14 @@ export function App({
             value={state.seed}
             disabled={running}
             onChange={(event) => research.setSeed(event.target.value)}
-            placeholder="yoga mat, low content book, funny nurse…"
+            placeholder="e.g. yoga mat"
             aria-label="Seed keyword"
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
             name="sprout-seed"
-            className="h-10 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+            className="h-10 border-0 bg-transparent px-2 shadow-none placeholder:text-ink/35 focus-visible:ring-0"
           />
           {research.runningHere ? (
             <Button type="button" variant="secondary" size="lg" onClick={research.stop}>Stop</Button>
@@ -380,6 +380,7 @@ export function App({
             sort={state.sort}
             emptyLabel={emptyLabel(run?.status ?? null, state.seed, research.filter, suggestions.length)}
             starred={starred}
+            showMarkets={(run?.marketplaceIds?.length ?? 0) > 1}
             fallbackMarketplaceId={run?.marketplaceId ?? state.marketplaceId}
             onFilter={research.setFilter}
             onSort={research.setSort}

@@ -1,5 +1,6 @@
 import { copyText, downloadBytes, downloadText, safeSpreadsheetText, toCsv } from '../lib/export'
 import { buildXlsx } from '../lib/xlsx'
+import { historyStatusLabel } from '../lib/library'
 import { getMarketplace } from '../lib/marketplaces'
 import type { HistoryEntry, SavedKeyword } from '../lib/types'
 import { formatWhen } from './format'
@@ -58,7 +59,7 @@ export function HistoryPanel({
   return (
     <section className="sprout-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-3">
       {items.length === 0 ? (
-        <p className="rounded-xl border border-line bg-cream px-4 py-8 text-center text-sm text-muted">Finished runs are kept on this device. Open one to copy or export it again.</p>
+        <p className="rounded-xl border border-line bg-cream px-4 py-8 text-center text-sm text-muted">Saved and failed runs stay on this device. A failed run is marked Failed so it isn’t an empty success. Open one to copy or export it again.</p>
       ) : (
         <ul className="space-y-1.5">
           {items.map((item) => {
@@ -71,6 +72,8 @@ export function HistoryPanel({
                     {ids.map((id) => getMarketplace(id).code).join(', ')}
                     {' · '}
                     {formatWhen(item.savedAt)}
+                    {' · '}
+                    {historyStatusLabel(item.run.status)}
                     {' · '}
                     {item.run.suggestions.length} keywords
                   </span>

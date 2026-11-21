@@ -7,9 +7,10 @@ import { getMarketplace } from './marketplaces'
 import { readPageSeed } from './page-context'
 import { parseSuggestionPayload, UnexpectedSuggestionError } from './parse'
 import { appendHistory, expandAllMarketplaces, hasPro, ProRequiredError } from './pro'
-import { buildQueries, countQueries, describePlan } from './queries'
+import { buildQueries, countQueries, describePlan, sanitizeRestoredSeed } from './queries'
 import { addSuggestion, filterSuggestions, sortSuggestions } from './results'
-import { createClientContext } from './suggest'
+import { createClientContext, describeFailure, ProbeFailedError } from './suggest'
+import { shouldRecordHistory } from './library'
 import { normalizeState } from './storage'
 import type { HistoryEntry, RunSnapshot, Suggestion } from './types'
 import { buildXlsx } from './xlsx'
@@ -180,7 +181,7 @@ describe('expand', () => {
     assert.equal(run.status, 'error')
     assert.match(run.error ?? '', /completion\.amazon\.com/)
     assert.match(run.error ?? '', /www\.amazon\.com/)
-    assert.match(run.error ?? '', /may have changed/)
+    assert.match(run.error ?? '', /was not found/)
     assert.equal(run.suggestions.length, 0)
   })
 })
@@ -242,6 +243,100 @@ describe('pro', () => {
       }),
       ProRequiredError,
     )
+  })
+})
+
+describe('fetch binding', () => {
+  it('calls the global fetch with the window as this', async () => {
+    const original = globalThis.fetch
+    let seen: unknown = 'missing'
+    globalThis.fetch = function (this: unknown) {
+      seen = this
+      if (this !== globalThis) {
+        throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation")
+      }
+      return Promise.resolve(new Response(JSON.stringify({ suggestions: [{ value: 'yoga mat' }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }))
+    } as typeof fetch
+    try {
+      const client = createClientContext({
+        gapMs: 0,
+        maxGapMs: 0,
+        retries: 1,
+        backoffBaseMs: 0,
+        timeoutMs: 5000,
+        sleepFn: async () => {},
+      })
+      const run = await expandSeed({
+        seed: 'yo',
+        marketplace: getMarketplace('us'),
+        mode: 'suffix',
+        includeSpace: false,
+        signal: new AbortController().signal,
+        client,
+        onProgress: () => {},
+      })
+      assert.equal(seen, globalThis)
+      assert.equal(run.status, 'done')
+      assert.ok(run.suggestions.some((item) => item.value === 'yoga mat'))
+    } finally {
+      globalThis.fetch = original
+    }
+  })
+
+  it('does not blame Amazon when fetch throws Illegal invocation', () => {
+    const error = new ProbeFailedError(
+      getMarketplace('us'),
+      new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation"),
+      new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation"),
+    )
+    assert.equal(error.kind, 'unexpected')
+    assert.match(error.message, /internal error/)
+    assert.equal(/endpoint may have changed/i.test(error.message), false)
+    assert.equal(describeFailure(new TypeError('Failed to fetch')).kind, 'network')
+  })
+})
+
+describe('failed prefixes', () => {
+  it('names the prefix that failed and still keeps the rest', async () => {
+    const client = createClientContext({
+      gapMs: 0,
+      maxGapMs: 0,
+      retries: 1,
+      backoffBaseMs: 0,
+      timeoutMs: 5000,
+      sleepFn: async () => {},
+      fetchImpl: async (input) => {
+        const prefix = new URL(String(input)).searchParams.get('prefix') ?? ''
+        if (prefix === 'yoga mata') return new Response('no', { status: 503 })
+        return json(['yoga mat thick'])
+      },
+    })
+    const run = await expandSeed({
+      seed: 'yoga mat',
+      marketplace: getMarketplace('us'),
+      mode: 'suffix',
+      includeSpace: false,
+      signal: new AbortController().signal,
+      client,
+      onProgress: () => {},
+    })
+    assert.equal(run.status, 'done')
+    assert.deepEqual(run.failedPrefixes, ['yoga mata'])
+    assert.match(run.warnings.join(' '), /yoga mata/)
+  })
+})
+
+describe('restore and history policy', () => {
+  it('drops the old placeholder seed and records failed runs', () => {
+    assert.equal(sanitizeRestoredSeed('yoga mat, low content book, funny nurse'), '')
+    assert.equal(sanitizeRestoredSeed('yoga mat'), 'yoga mat')
+    assert.equal(shouldRecordHistory('error'), true)
+    assert.equal(shouldRecordHistory('cancelled'), true)
+    assert.equal(shouldRecordHistory('done'), true)
+    assert.equal(shouldRecordHistory('running'), false)
   })
 })
 

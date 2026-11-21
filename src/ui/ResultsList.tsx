@@ -22,6 +22,7 @@ export function ResultsList({
   emptyLabel,
   starred,
   fallbackMarketplaceId,
+  showMarkets = false,
   onFilter,
   onSort,
   onToggle,
@@ -36,6 +37,7 @@ export function ResultsList({
   emptyLabel: string
   starred: string[]
   fallbackMarketplaceId: string
+  showMarkets?: boolean
   onFilter: (value: string) => void
   onSort: (sort: SortKey) => void
   onToggle: (key: string) => void
@@ -117,7 +119,7 @@ export function ResultsList({
                       <Star className={`h-3.5 w-3.5 ${saved ? 'fill-clay text-clay' : ''}`} />
                     </button>
                     <span className="min-w-0 flex-1 truncate text-[13px]" title={item.value}>{item.value}</span>
-                    {markets.length > 1 && (
+                    {(showMarkets || markets.length > 1) && (
                       <span className="shrink-0 font-mono text-[10px] text-muted">
                         {markets.map((id) => getMarketplace(id).code).join(' ')}
                       </span>

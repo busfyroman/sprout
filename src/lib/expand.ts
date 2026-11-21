@@ -7,6 +7,7 @@ import {
   createClientContext,
   errorText,
   fetchBatch,
+  formatFailedPrefixes,
   isAbortError,
   ProbeFailedError,
   type ClientContext,
@@ -54,6 +55,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
     let endpoint: EndpointKind = probe.endpoint
     let laterFallback = false
     let failedQueries = 0
+    const failedPrefixes: string[] = []
     let finishedQueries = 1
     let firstFailure = ''
 
@@ -68,6 +70,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
         suggestions: copied,
         finishedQueries,
         failedQueries,
+        failedPrefixes: [...failedPrefixes],
         endpointLabel: probe.batch.host,
         usedFallback: probe.usedFallback || laterFallback,
         recentLabel: extra?.recentLabel ?? snapshot.recentLabel,
@@ -77,6 +80,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
           laterFallback,
           host: probe.batch.host,
           failedQueries,
+          failedPrefixes,
           totalQueries: queries.length,
           firstFailure,
           status,
@@ -101,6 +105,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
       } catch (error) {
         if (isAbortError(error) || input.signal.aborted) throw error
         failedQueries += 1
+        failedPrefixes.push(query.text)
         if (!firstFailure) firstFailure = errorText(error)
       } finally {
         finishedQueries += 1
@@ -109,8 +114,9 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
     }, input.signal)
 
     if (failedQueries === queries.length || (suggestions.size === 0 && failedQueries > 0 && finishedQueries === queries.length)) {
+      const listed = failedPrefixes.length > 0 ? ` Failed prefixes: ${formatFailedPrefixes(failedPrefixes)}.` : ''
       publish('error', {
-        error: firstFailure || `Amazon returned no usable suggestions for “${seed}” on ${input.marketplace.domain}.`,
+        error: `${firstFailure || `Amazon returned no usable suggestions for “${seed}” on ${input.marketplace.domain}.`}${listed}`,
       })
       return snapshot
     }
@@ -134,6 +140,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
       ...snapshot,
       status: 'error',
       finishedAt: Date.now(),
+      failedPrefixes: queries[0] ? [queries[0].text] : [],
       error: errorText(error),
     })
     return snapshot
@@ -152,6 +159,7 @@ function createRun(input: ExpandInput, seed: string, totalQueries: number): RunS
     finishedQueries: 0,
     failedQueries: 0,
     endpointLabel: input.marketplace.completionHost,
+    failedPrefixes: [],
     usedFallback: false,
     warnings: [],
     error: null,
@@ -231,6 +239,7 @@ function collectWarnings(input: {
   laterFallback: boolean
   host: string
   failedQueries: number
+  failedPrefixes: readonly string[]
   totalQueries: number
   firstFailure: string
   status: RunSnapshot['status']
@@ -244,8 +253,9 @@ function collectWarnings(input: {
     warnings.push(`Some prefixes failed on ${input.host} and were retried on the other Amazon endpoint.`)
   }
   if (input.failedQueries > 0 && input.status !== 'error') {
+    const listed = input.failedPrefixes.length > 0 ? ` (${formatFailedPrefixes(input.failedPrefixes)})` : ''
     const detail = input.firstFailure ? ` ${input.firstFailure}` : ''
-    warnings.push(`${input.failedQueries} of ${input.totalQueries} prefixes failed.${detail} The rest of the list is still usable.`)
+    warnings.push(`${input.failedQueries} of ${input.totalQueries} prefixes failed${listed}.${detail} The rest of the list is still usable.`)
   }
   if (input.status === 'done' && input.suggestionCount === 0) {
     warnings.push(`Amazon returned no suggestions for “${input.seed}” on ${input.marketplace.domain}. Try a shorter seed or another marketplace.`)
