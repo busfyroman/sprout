@@ -7,6 +7,12 @@ Sprout is not affiliated with Amazon. Amazon is a trademark of Amazon.com, Inc. 
 Source and feedback: https://github.com/busfyroman/sprout
 Privacy policy: https://busfyroman.github.io/sprout/privacy.html
 
+## Demo videos
+
+- [Free Amazon keyword research in 30 seconds](https://www.youtube.com/watch?v=f8iP_AWohfA)
+- [Free KDP keyword tool – 7 backend keywords](https://www.youtube.com/watch?v=RgRVRVlLPQo)
+- [Amazon on-page keyword research – Deep mode and more than one store](https://www.youtube.com/watch?v=l4ljCxLg4NQ)
+
 ## Install
 
 From the Chrome Web Store, after the listing is published: search for **Sprout – Amazon Keyword Research for Sellers**. The package is free.

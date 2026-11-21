@@ -43,6 +43,23 @@
       .faq h3 { margin-bottom: 0.2rem; }
       footer { padding: 2rem 1.25rem 3rem; color: #6f685e; }
       footer p { margin: 0.4rem 0; }
+      .video { margin: 1.4rem 0; }
+      .video-frame {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: 0.7rem;
+        overflow: hidden;
+        border: 1px solid #d8d1c4;
+        background: #1c1915;
+      }
+      .video-frame iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
     </style>
     <script type="application/ld+json">
 {
@@ -112,6 +129,15 @@
           }
         }
       ]
+    },
+    {
+      "@type": "VideoObject",
+      "name": "Free Amazon keyword research in 30 seconds (Sprout)",
+      "description": "Sprout expands the seed “yoga mat” on amazon.com, exports an Amazon Ads bulk CSV, and fills a 249-byte Backend Search Terms field. Free Chrome extension, no account, no invented search volume.",
+      "thumbnailUrl": "https://i.ytimg.com/vi/f8iP_AWohfA/hqdefault.jpg",
+      "uploadDate": "2026-11-21",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/f8iP_AWohfA",
+      "contentUrl": "https://www.youtube.com/watch?v=f8iP_AWohfA"
     }
   ]
 }
@@ -129,6 +155,20 @@
       <p class="updated">Updated 21 November 2026. Not affiliated with Amazon. No account. No tracking.</p>
     </header>
     <main>
+      <h2>See it in action</h2>
+      <figure class="video">
+        <div class="video-frame">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/f8iP_AWohfA"
+            title="Free Amazon keyword research in 30 seconds (Sprout)"
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
+        <figcaption>A short walkthrough: expand “yoga mat” on amazon.com, export an Ads bulk CSV, and fill Backend Search Terms. <a href="https://www.youtube.com/watch?v=f8iP_AWohfA">Watch on YouTube</a>.</figcaption>
+      </figure>
 
       <h2>What “free Amazon keyword research” can honestly mean</h2>
       <p>A lot of keyword tools charge for estimated search volume. That number can be useful, but it is an estimate from a private dataset, not something Amazon’s search box itself displays. If a free tool shows volume, CPC, or sales without saying where the figures came from, treat them with care.</p>
