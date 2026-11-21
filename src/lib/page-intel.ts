@@ -12,11 +12,22 @@ const EMPTY: PageIntel = { related: [], brands: [], productTitle: '', department
 export function readPageIntel(html: string): PageIntel {
   if (!html.trim()) return EMPTY
   return {
-    related: unique(readRelated(html)),
-    brands: unique(readBrands(html)),
+    related: unique(readRelated(html).filter((term) => !isProductCode(term))),
+    brands: unique(readBrands(html).filter((term) => !isProductCode(term))),
     productTitle: readProductTitle(html),
     departmentAlias: readDepartment(html),
   }
+}
+
+/** Spec lines such as UPC, GTIN, EAN, ASIN, and long model numbers are not keywords. */
+export function isProductCode(value: string): boolean {
+  const text = value.replace(/\s+/g, ' ').trim()
+  if (!text) return false
+  if (/\b(?:upc|gtin|ean|asin|isbn|sku|mpn)\b/i.test(text)) return true
+  if (/\bB0[A-Z0-9]{8}\b/i.test(text)) return true
+  const compact = text.replace(/\s/g, '')
+  const digits = compact.replace(/\D/g, '')
+  return digits.length >= 8 && digits.length >= compact.length - 2
 }
 
 function readDepartment(html: string): string | null {
@@ -99,8 +110,8 @@ function isBrandName(value: string): boolean {
 
 export function readLivePageIntel(root: ParentNode): PageIntel {
   return {
-    related: unique(readLiveRelated(root)),
-    brands: unique(readLiveBrands(root)),
+    related: unique(readLiveRelated(root).filter((term) => !isProductCode(term))),
+    brands: unique(readLiveBrands(root).filter((term) => !isProductCode(term))),
     productTitle: liveText(root, '#productTitle'),
     departmentAlias: liveDepartment(root),
   }

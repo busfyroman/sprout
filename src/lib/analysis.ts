@@ -10,7 +10,7 @@ const STOP = new Set([
 ])
 
 export function wordCount(phrase: string): number {
-  return tokenize(phrase).length
+  return phrase.match(/[\p{L}\p{N}]+(?:[.,]\p{N}+)?/gu)?.length ?? 0
 }
 
 export function matchesWordCount(phrase: string, filter: WordCountFilter): boolean {

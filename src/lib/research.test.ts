@@ -4,9 +4,9 @@ import { adsCsv, buildKdpBoxes, classifyPosition, connectorWords, matchesWordCou
 import { suggestionUrl } from './endpoints'
 import { exportBasename } from './export'
 import { getMarketplace } from './marketplaces'
-import { readPageIntel } from './page-intel'
+import { isProductCode, readPageIntel } from './page-intel'
 import { buildQueries, countQueries } from './queries'
-import { parseResultCount } from './result-count'
+import { formatResultCount, parseResultCount } from './result-count'
 
 test('deep expand adds localized connector prefixes', () => {
   const plain = countQueries('suffix', true)
@@ -35,7 +35,11 @@ test('position is relative to the seed', () => {
   assert.equal(classifyPosition('thick yoga mat bag', 'yoga mat'), 'between')
   assert.equal(classifyPosition('meditation cushion', 'yoga mat'), 'other')
   assert.equal(matchesWordCount('yoga mat thick', '3+'), true)
+  assert.equal(matchesWordCount('yoga mat 0.5', '3+'), true)
   assert.equal(matchesWordCount('yoga', '3+'), false)
+  assert.equal(isProductCode('UPC 841710155686'), true)
+  assert.equal(isProductCode('B0ABCDEF12'), true)
+  assert.equal(isProductCode('yoga mat 6mm'), false)
 })
 
 test('KDP boxes stay within 50 characters and skip title words', () => {
@@ -54,6 +58,10 @@ test('result count parser never calls a count search volume', () => {
   const parsed = parseResultCount('<span>1-16 of over 2,000 results for yoga mat</span>')
   assert.equal(parsed.count, 2000)
   assert.equal(parseResultCount('<span>7 results for <span>zero sugar yogurt drink</span></span>').count, 7)
+  const capped = parseResultCount('<span>over 5,000 results</span>')
+  assert.equal(capped.count, 5000)
+  assert.equal(capped.capped, true)
+  assert.equal(formatResultCount(capped.count ?? 0, capped.capped), '5,000+')
   assert.equal(parseResultCount('<span>1-48 of 48 results</span>').count, 48)
   assert.match(parseResultCount('<html><body>no count here</body></html>').message, /did not show a result count/)
   assert.match(parsed.message, /not search volume/)

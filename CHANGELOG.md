@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2
+
+Stop cancels the run from every Sprout surface and does not start another one. The partial list stays on screen, history records one Stopped entry, and a later Saved entry is not written. Capped Amazon result lines show as `5,000+`. The word-count filter counts numbers such as `0.5`. Product-code spec lines are left out of page terms and exclude chips. The translated seed stays after Expand. Checked rows label the export button `Export 3 checked`.
+
 ## 1.0.1
 
 Chrome Web Store locales. The manifest sets `default_locale` to `en` and uses `__MSG_extName__` and `__MSG_extDescription__`. Message catalogs for English, German, Spanish, French, Italian, and Slovak live in `_locales`. The side panel and keyword table use `chrome.i18n.getMessage`, with the English string as the fallback.

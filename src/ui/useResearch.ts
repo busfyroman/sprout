@@ -5,9 +5,10 @@ import { deleteHistoryEntry, listHistory, listSaved, removeSaved, saveHistoryEnt
 import { getMarketplace } from '../lib/marketplaces'
 import { expandSelectedMarketplaces, hasPro } from '../lib/pro'
 import { cleanSeed, sanitizeRestoredSeed } from '../lib/queries'
+import { createExpansionGate, publishStop, subscribeStop } from '../lib/run-control'
 import { parseWordList } from '../lib/search-terms'
 import { hasChromeStorage, defaultState, isContextInvalidated, loadSettings, loadState, migrateLegacySeed, normalizeState, REOPEN_PANEL_MESSAGE, saveSettings, saveState, watchSettings, watchState, type SproutSettings } from '../lib/storage'
-import type { ExpandMode, SortKey, SproutState, Suggestion } from '../lib/types'
+import type { ExpandMode, RunSnapshot, SortKey, SproutState, Suggestion } from '../lib/types'
 
 export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: string; pageDepartment?: string | null }) {
   const ownerId = useRef(crypto.randomUUID())
@@ -20,7 +21,10 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
   const [now, setNow] = useState(() => Date.now())
   const stateRef = useRef(state)
   const readyRef = useRef(false)
-  const abortRef = useRef<AbortController | null>(null)
+  const gateRef = useRef(createExpansionGate())
+  const savedStopFor = useRef<number | null>(null)
+  const keptTranslation = useRef('')
+  const bestRun = useRef<RunSnapshot | null>(null)
   const saveTimer = useRef<number | null>(null)
   const rev = useRef(0)
   const savedRev = useRef(0)
@@ -209,12 +213,47 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     persist({ ...stateRef.current, ...partial }, true)
   }, [persist])
 
+  const halt = useCallback((startedAt: number) => {
+    const owned = gateRef.current.stop(startedAt)
+    if (!owned) return
+    const current = stateRef.current
+    const visible = current.run?.startedAt === startedAt ? current.run : null
+    const remembered = bestRun.current?.startedAt === startedAt ? bestRun.current : null
+    const run = (remembered?.suggestions.length ?? 0) >= (visible?.suggestions.length ?? 0) ? remembered ?? visible : visible
+    if (!run || run.status !== 'running') return
+    const stoppedRun = {
+      ...run,
+      status: 'cancelled' as const,
+      finishedAt: Date.now(),
+      error: null,
+      suggestions: run.suggestions,
+      warnings: [
+        `Stopped early at ${run.finishedQueries} of ${run.totalQueries} prefixes. Kept ${run.suggestions.length} suggestions.`,
+      ],
+    }
+    persist({
+      ...current,
+      translatedSeed: current.useTranslatedSeed ? (current.translatedSeed || keptTranslation.current) : current.translatedSeed,
+      runLock: null,
+      run: stoppedRun,
+    }, true)
+    if (savedStopFor.current === startedAt) return
+    savedStopFor.current = startedAt
+    if (!hasPro('history')) return
+    void saveHistoryEntry({ id: String(startedAt), savedAt: Date.now(), run: stoppedRun }).then((history) => {
+      setState((existing) => {
+        const next = { ...existing, history }
+        stateRef.current = next
+        return next
+      })
+    })
+  }, [persist])
+
+  useEffect(() => subscribeStop((startedAt) => halt(startedAt)), [halt])
+
   const start = useCallback(async (override?: { seed?: string; depth?: number }) => {
     const current = stateRef.current
     if (current.run?.status === 'running' && current.runLock?.ownerId === ownerId.current) return
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
     const depth = override?.depth ?? 0
     if (depth > 2) {
       setNotice('Expand this stops at depth 2 so one phrase cannot crawl forever.')
@@ -224,9 +263,9 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     const seed = !override?.seed && current.useTranslatedSeed && current.translatedSeed.trim()
       ? cleanSeed(current.translatedSeed)
       : typed
-    if (!seed || controller.signal.aborted) return
+    if (!seed) return
+    keptTranslation.current = current.useTranslatedSeed ? current.translatedSeed : ''
     const fresh = await loadState()
-    if (controller.signal.aborted) return
     if (
       fresh.runLock &&
       fresh.runLock.ownerId !== ownerId.current &&
@@ -235,6 +274,8 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
       setNotice('Sprout is already expanding a keyword in another panel.')
       return
     }
+    const begun = gateRef.current.begin()
+    if (!begun.ok) return
     setNotice(null)
     setFilter('')
     const marketplaceIds = (current.selectedMarketplaceIds.length > 0 ? current.selectedMarketplaceIds : [current.marketplaceId])
@@ -245,6 +286,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
       {
         ...current,
         seed: override?.seed ? seed : current.seed,
+        translatedSeed: current.useTranslatedSeed ? (current.translatedSeed || keptTranslation.current) : current.translatedSeed,
         marketplaceId: marketplace.id,
         selectedMarketplaceIds: uniqueIds,
         droppedSearchWords: [],
@@ -267,7 +309,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
           warnings: [],
           error: null,
           status: 'running',
-          startedAt: Date.now(),
+          startedAt: begun.startedAt,
           finishedAt: null,
           recentLabel: 'seed',
         },
@@ -284,21 +326,35 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
         alias: current.kdpMode ? (current.departmentAlias === 'digital-text' ? 'digital-text' : 'stripbooks') : current.departmentAlias,
         deep: current.deepExpand,
         depth,
-        signal: controller.signal,
+        signal: begun.signal,
         onProgress: (run) => {
-          if (controller.signal.aborted && run.status === 'running') return
+          const ownedId = gateRef.current.startedAt
+          const stamped = ownedId ? { ...run, startedAt: ownedId } : run
+          if (!gateRef.current.acceptProgress(stamped.status)) return
           const latest = stateRef.current
-          const settled = run.status !== 'running'
+          if (
+            latest.run?.startedAt === stamped.startedAt &&
+            latest.run.suggestions.length > stamped.suggestions.length &&
+            stamped.status === 'running'
+          ) {
+            return
+          }
+          if ((stamped.suggestions?.length ?? 0) >= (bestRun.current?.suggestions.length ?? 0) || bestRun.current?.startedAt !== stamped.startedAt) {
+            bestRun.current = stamped
+          }
+          const settled = stamped.status !== 'running'
+          const translatedSeed = latest.useTranslatedSeed ? (latest.translatedSeed || keptTranslation.current) : latest.translatedSeed
           persist(
             {
               ...latest,
-              run,
+              translatedSeed,
+              run: stamped,
               runLock: settled ? null : { ownerId: ownerId.current, heartbeat: Date.now() },
             },
-            settled,
+            settled || stamped.suggestions.length > (latest.run?.suggestions.length ?? 0),
           )
-          if (settled && hasPro('history') && shouldRecordHistory(run.status)) {
-            void saveHistoryEntry({ id: String(run.startedAt), savedAt: Date.now(), run }).then((history) => {
+          if (settled && hasPro('history') && shouldRecordHistory(stamped.status) && savedStopFor.current !== stamped.startedAt) {
+            void saveHistoryEntry({ id: String(stamped.startedAt), savedAt: Date.now(), run: stamped }).then((history) => {
               setState((current) => {
                 const next = { ...current, history }
                 stateRef.current = next
@@ -309,7 +365,6 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
         },
       })
     } finally {
-      abortRef.current = null
       const latest = stateRef.current
       if (latest.runLock?.ownerId === ownerId.current) {
         persist({ ...latest, runLock: null }, true)
@@ -318,23 +373,11 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
   }, [persist])
 
   const stop = useCallback(() => {
-    abortRef.current?.abort()
-    const current = stateRef.current
-    if (current.run?.status !== 'running') return
-    persist({
-      ...current,
-      runLock: null,
-      run: {
-        ...current.run,
-        status: 'cancelled',
-        finishedAt: Date.now(),
-        error: null,
-        warnings: [
-          `Stopped early at ${current.run.finishedQueries} of ${current.run.totalQueries} prefixes. Kept ${current.run.suggestions.length} suggestions.`,
-        ],
-      },
-    }, true)
-  }, [persist])
+    const startedAt = stateRef.current.run?.startedAt
+    if (!startedAt || stateRef.current.run?.status !== 'running') return
+    void publishStop(startedAt)
+    halt(startedAt)
+  }, [halt])
 
   return {
     state,

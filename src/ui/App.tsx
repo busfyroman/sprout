@@ -5,7 +5,7 @@ import { DEPARTMENTS } from '../lib/departments'
 import { buildCsv, buildWorkbook, copyText, downloadBytes, downloadText, exportBasename, keywordsToCopy } from '../lib/export'
 import { getMarketplace, MARKETPLACES } from '../lib/marketplaces'
 import { readPageIntel, type PageIntel } from '../lib/page-intel'
-import { fetchResultCount, type ResultCount } from '../lib/result-count'
+import { fetchResultCount, formatResultCount, type ResultCount } from '../lib/result-count'
 import { languageFromLocale, translateOnDevice } from '../lib/translate'
 import { hasPro } from '../lib/pro'
 import { openExternal, PROJECT, storeReviewUrl } from '../project'
@@ -228,7 +228,7 @@ export function App({
     if (!hit) return ''
     if (hit.blocked) return 'check'
     if (hit.count == null) return '—'
-    return `${hit.count.toLocaleString()} results`
+    return formatResultCount(hit.count, hit.capped)
   }
 
   function rowCountTitle(item: { key: string }): string {
@@ -374,8 +374,20 @@ export function App({
             name="sprout-seed"
             className="h-10 border-0 bg-transparent px-2 shadow-none placeholder:text-ink/35 focus-visible:ring-0"
           />
-          {research.runningHere ? (
-            <Button type="button" variant="secondary" size="lg" onClick={research.stop}>{t('uiStop', 'Stop')}</Button>
+          {state.run?.status === 'running' ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                research.stop()
+              }}
+            >
+              {t('uiStop', 'Stop')}
+            </Button>
           ) : (
             <Button type="submit" size="lg" disabled={!state.seed.trim() || research.lockedByOther}>
               {selectedMarkets.length > 1 ? t('uiExpandCount', 'Expand $1', String(selectedMarkets.length)) : t('uiExpand', 'Expand')}
@@ -747,20 +759,25 @@ export function App({
             <Copy className="h-3.5 w-3.5" aria-hidden />
             {copyLabel}
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => download('csv')} disabled={exportCount === 0 || !run}>CSV</Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => download('xlsx')} disabled={exportCount === 0 || !run}>XLSX</Button>
+          <Button type="button" size="sm" variant="outline" aria-label="CSV" onClick={() => download('csv')} disabled={exportCount === 0 || !run}>
+            {selectedItems.length > 0 ? t('uiExportChecked', 'Export $1 checked', String(selectedItems.length)) : 'CSV'}
+          </Button>
+          <Button type="button" size="sm" variant="outline" aria-label="XLSX" onClick={() => download('xlsx')} disabled={exportCount === 0 || !run}>
+            {selectedItems.length > 0 ? `XLSX · ${selectedItems.length}` : 'XLSX'}
+          </Button>
           <Button
             type="button"
             size="sm"
             variant="outline"
             disabled={exportCount === 0}
+            aria-label="Ads"
             onClick={() => {
               const campaign = cleanSeed(run?.seed || state.seed) || 'Sprout'
               const text = adsCsv(exportItems.map((item) => item.value), campaign, campaign, 'Exact')
               downloadText(`${exportBasename(campaign, 'ads')}.csv`, text, 'text/csv;charset=utf-8')
             }}
           >
-            Ads
+            {selectedItems.length > 0 ? `Ads · ${selectedItems.length}` : 'Ads'}
           </Button>
           <label className="flex items-center gap-1 text-[10px] text-muted">
             <input type="checkbox" checked={exactCount} onChange={(event) => setExactCount(event.target.checked)}             aria-label={t('uiQuotesLabel', 'Count exact quoted matches')} />

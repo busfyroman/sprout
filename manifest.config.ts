@@ -12,7 +12,7 @@ export default defineManifest({
   manifest_version: 3,
   name: '__MSG_extName__',
   short_name: 'Sprout',
-  version: '1.0.1',
+  version: '1.0.2',
   default_locale: 'en',
   description: '__MSG_extDescription__',
   minimum_chrome_version: '120',
