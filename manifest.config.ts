@@ -1,6 +1,5 @@
 import { defineManifest } from '@crxjs/vite-plugin'
 import { MARKETPLACES } from './src/lib/marketplaces'
-import { EXTENSION_DESCRIPTION, EXTENSION_NAME } from './src/project'
 
 const hostPermissions = [...new Set(MARKETPLACES.flatMap((marketplace) => [
   `https://${marketplace.completionHost}/*`,
@@ -11,13 +10,14 @@ const contentMatches = MARKETPLACES.map((marketplace) => `https://${marketplace.
 
 export default defineManifest({
   manifest_version: 3,
-  name: EXTENSION_NAME,
+  name: '__MSG_extName__',
   short_name: 'Sprout',
-  version: '1.0.0',
-  description: EXTENSION_DESCRIPTION,
+  version: '1.0.1',
+  default_locale: 'en',
+  description: '__MSG_extDescription__',
   minimum_chrome_version: '120',
   action: {
-    default_title: 'Sprout – keyword research',
+    default_title: '__MSG_extActionTitle__',
     default_popup: 'src/popup/index.html',
     default_icon: {
       16: 'src/assets/icons/icon16.png',

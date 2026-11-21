@@ -4,6 +4,7 @@ import { suggestionMarkets } from '../lib/results'
 import type { SortKey, Suggestion } from '../lib/types'
 import { Checkbox } from './components/checkbox'
 import { Input } from './components/input'
+import { t } from './i18n'
 
 const SORTS: Array<{ id: SortKey; label: string }> = [
   { id: 'alpha', label: 'A → Z' },
@@ -64,18 +65,18 @@ export function ResultsList({
         <Input
           value={filter}
           onChange={(event) => onFilter(event.target.value)}
-          placeholder="Filter keywords or +a"
-          aria-label="Filter suggestions"
+          placeholder={t('uiFilterPlaceholder', 'Filter keywords or +a')}
+          aria-label={t('uiFilterLabel', 'Filter suggestions')}
           className="h-8 text-xs"
         />
         <select
-          aria-label="Sort suggestions"
+          aria-label={t('uiSortLabel', 'Sort suggestions')}
           value={sort}
           onChange={(event) => onSort(event.target.value as SortKey)}
           className="h-8 shrink-0 rounded-lg border border-line bg-cream px-2 text-xs text-ink"
         >
           {SORTS.map((option) => (
-            <option key={option.id} value={option.id}>{option.label}</option>
+            <option key={option.id} value={option.id}>{t(option.id === 'alpha' ? 'uiSortAlpha' : option.id === 'alpha-desc' ? 'uiSortAlphaDesc' : option.id === 'shortest' ? 'uiSortShortest' : option.id === 'longest' ? 'uiSortLongest' : 'uiSortSource', option.label)}</option>
           ))}
         </select>
       </div>
@@ -87,7 +88,7 @@ export function ResultsList({
             disabled={items.length === 0}
             aria-label="Select visible suggestions"
           />
-          Select visible
+            {t('uiSelectVisible', 'Select visible')}
         </label>
         <span className="tabular-nums">{items.length === total ? `${total} keywords` : `${items.length} of ${total}`}</span>
       </div>
@@ -143,7 +144,7 @@ export function ResultsList({
                           onExpand(item)
                         }}
                       >
-                        Expand this
+                        {t('uiExpandThis', 'Expand this')}
                       </button>
                     ) : null}
                     {(showMarkets || markets.length > 1) && (

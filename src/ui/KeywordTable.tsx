@@ -5,6 +5,7 @@ import { suggestionMarkets } from '../lib/results'
 import type { SortKey, Suggestion } from '../lib/types'
 import { Checkbox } from './components/checkbox'
 import { Input } from './components/input'
+import { t } from './i18n'
 
 const SORTS: Array<{ id: SortKey; label: string }> = [
   { id: 'alpha', label: 'A → Z' },
@@ -63,18 +64,18 @@ export function KeywordTable({
         <Input
           value={filter}
           onChange={(event) => onFilter(event.target.value)}
-          placeholder="Filter keywords"
-          aria-label="Filter suggestions"
+          placeholder={t('uiFilterPlaceholder', 'Filter keywords or +a')}
+          aria-label={t('uiFilterLabel', 'Filter suggestions')}
           className="h-8 max-w-sm text-xs"
         />
         <select
-          aria-label="Sort suggestions"
+          aria-label={t('uiSortLabel', 'Sort suggestions')}
           value={sort}
           onChange={(event) => onSort(event.target.value as SortKey)}
           className="h-8 rounded-lg border border-line bg-cream px-2 text-xs text-ink"
         >
           {SORTS.map((option) => (
-            <option key={option.id} value={option.id}>{option.label}</option>
+            <option key={option.id} value={option.id}>{t(option.id === 'alpha' ? 'uiSortAlpha' : option.id === 'alpha-desc' ? 'uiSortAlphaDesc' : option.id === 'shortest' ? 'uiSortShortest' : option.id === 'longest' ? 'uiSortLongest' : 'uiSortSource', option.label)}</option>
           ))}
         </select>
         <span className="ml-auto text-[11px] tabular-nums text-muted">{items.length === total ? `${total} keywords` : `${items.length} of ${total}`}</span>
@@ -91,13 +92,13 @@ export function KeywordTable({
                   aria-label="Select visible suggestions"
                 />
               </th>
-              <th className="w-8 px-1 py-2">Star</th>
-              <th className="px-2 py-2 font-medium">Keyword</th>
-              <th className="px-2 py-2 font-medium">Position</th>
-              <th className="px-2 py-2 font-medium">Amazon results</th>
-              <th className="px-2 py-2 font-medium">Markets</th>
-              <th className="px-2 py-2 font-medium">From</th>
-              <th className="px-2 py-2 font-medium">Open</th>
+              <th className="w-8 px-1 py-2">{t('uiColStar', 'Star')}</th>
+              <th className="px-2 py-2 font-medium">{t('uiColKeyword', 'Keyword')}</th>
+              <th className="px-2 py-2 font-medium">{t('uiColPosition', 'Position')}</th>
+              <th className="px-2 py-2 font-medium">{t('uiColResults', 'Amazon results')}</th>
+              <th className="px-2 py-2 font-medium">{t('uiColMarkets', 'Markets')}</th>
+              <th className="px-2 py-2 font-medium">{t('uiColFrom', 'From')}</th>
+              <th className="px-2 py-2 font-medium">{t('uiColOpen', 'Open')}</th>
             </tr>
           </thead>
           <tbody>
@@ -122,7 +123,7 @@ export function KeywordTable({
                     {item.value}
                     {similar?.(item) ? <span className="ml-1 text-[10px] text-clay">similar</span> : null}
                     {onExpand ? (
-                      <button type="button" className="ml-2 text-[10px] text-moss" onClick={() => onExpand(item)}>Expand this</button>
+                      <button type="button" className="ml-2 text-[10px] text-moss" onClick={() => onExpand(item)}>{t('uiExpandThis', 'Expand this')}</button>
                     ) : null}
                   </td>
                   <td className="px-2 py-1.5 text-[11px] uppercase text-muted">{positionLabel?.(item) ?? ''}</td>
@@ -130,11 +131,11 @@ export function KeywordTable({
                   <td className="px-2 py-1.5 text-[11px] text-muted">{markets.map((id) => getMarketplace(id).code).join(' ')}</td>
                   <td className="px-2 py-1.5 font-mono text-[10px] text-muted">{item.sources.slice(0, 4).map((source) => source.label).join(' ')}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-[11px]">
-                    <a className="text-moss underline-offset-2 hover:underline" href={amazonSearchUrl(primary, item.value)} target="_blank" rel="noreferrer">Amazon</a>
+                    <a className="text-moss underline-offset-2 hover:underline" href={amazonSearchUrl(primary, item.value)} target="_blank" rel="noreferrer">{t('uiLinkAmazon', 'Amazon')}</a>
                     {' · '}
-                    <a className="text-moss underline-offset-2 hover:underline" href={googleSearchUrl(item.value)} target="_blank" rel="noreferrer">Google</a>
+                    <a className="text-moss underline-offset-2 hover:underline" href={googleSearchUrl(item.value)} target="_blank" rel="noreferrer">{t('uiLinkGoogle', 'Google')}</a>
                     {' · '}
-                    <a className="text-moss underline-offset-2 hover:underline" href={googleTrendsUrl(item.value, primary)} target="_blank" rel="noreferrer">Trends</a>
+                    <a className="text-moss underline-offset-2 hover:underline" href={googleTrendsUrl(item.value, primary)} target="_blank" rel="noreferrer">{t('uiLinkTrends', 'Trends')}</a>
                   </td>
                 </tr>
               )

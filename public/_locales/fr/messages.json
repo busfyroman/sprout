@@ -1,0 +1,458 @@
+{
+  "extName": {
+    "message": "Sprout – Mots-clés Amazon pour les vendeurs",
+    "description": "Extension name in the store and chrome://extensions. Maximum 75 characters."
+  },
+  "extDescription": {
+    "message": "Mots-clés gratuits pour vendeurs Amazon. Une requête devient des suggestions. Sans compte, sans suivi, sans lien avec Amazon.",
+    "description": "Store summary. Maximum 132 characters."
+  },
+  "extActionTitle": {
+    "message": "Sprout – mots-clés",
+    "description": "Toolbar tooltip."
+  },
+  "uiForSellers": {
+    "message": "Pour les vendeurs Amazon",
+    "description": "Sprout interface string."
+  },
+  "uiSeedPlaceholder": {
+    "message": "p. ex. tapis yoga",
+    "description": "Sprout interface string."
+  },
+  "uiSeedLabel": {
+    "message": "Mot de départ",
+    "description": "Sprout interface string."
+  },
+  "uiExpand": {
+    "message": "Développer",
+    "description": "Sprout interface string."
+  },
+  "uiExpandCount": {
+    "message": "Développer $1",
+    "description": "Sprout interface string."
+  },
+  "uiStop": {
+    "message": "Arrêter",
+    "description": "Sprout interface string."
+  },
+  "uiSuffix": {
+    "message": "Suffixe",
+    "description": "Sprout interface string."
+  },
+  "uiPrefix": {
+    "message": "Préfixe",
+    "description": "Sprout interface string."
+  },
+  "uiBoth": {
+    "message": "Les deux",
+    "description": "Sprout interface string."
+  },
+  "uiSpace": {
+    "message": "Espace",
+    "description": "Sprout interface string."
+  },
+  "uiSpaceLabel": {
+    "message": "Insérer une espace avant la lettre ajoutée",
+    "description": "Sprout interface string."
+  },
+  "uiDeep": {
+    "message": "Approfondi",
+    "description": "Sprout interface string."
+  },
+  "uiDeepLabel": {
+    "message": "Développement approfondi avec des mots de liaison",
+    "description": "Sprout interface string."
+  },
+  "uiKdp": {
+    "message": "KDP",
+    "description": "Sprout interface string."
+  },
+  "uiKdpLabel": {
+    "message": "Mode livres KDP",
+    "description": "Sprout interface string."
+  },
+  "uiDepartment": {
+    "message": "Rayon",
+    "description": "Sprout interface string."
+  },
+  "uiAnyLength": {
+    "message": "Toute longueur",
+    "description": "Sprout interface string."
+  },
+  "uiOneWord": {
+    "message": "1 mot",
+    "description": "Sprout interface string."
+  },
+  "uiTwoWords": {
+    "message": "2 mots",
+    "description": "Sprout interface string."
+  },
+  "uiThreePlus": {
+    "message": "3 mots et plus",
+    "description": "Sprout interface string."
+  },
+  "uiWordCount": {
+    "message": "Nombre de mots",
+    "description": "Sprout interface string."
+  },
+  "uiAnyPosition": {
+    "message": "Toute position",
+    "description": "Sprout interface string."
+  },
+  "uiBefore": {
+    "message": "Avant le mot",
+    "description": "Sprout interface string."
+  },
+  "uiAfter": {
+    "message": "Après le mot",
+    "description": "Sprout interface string."
+  },
+  "uiBetween": {
+    "message": "Entre les deux",
+    "description": "Sprout interface string."
+  },
+  "uiOther": {
+    "message": "Autre",
+    "description": "Sprout interface string."
+  },
+  "uiSeedPosition": {
+    "message": "Position du mot",
+    "description": "Sprout interface string."
+  },
+  "uiTranslatedPlaceholder": {
+    "message": "Mot traduit",
+    "description": "Sprout interface string."
+  },
+  "uiTranslate": {
+    "message": "Traduire",
+    "description": "Sprout interface string."
+  },
+  "uiUse": {
+    "message": "Utiliser",
+    "description": "Sprout interface string."
+  },
+  "uiUseLabel": {
+    "message": "Développer le mot traduit",
+    "description": "Sprout interface string."
+  },
+  "uiPrefixes": {
+    "message": "$1 préfixes",
+    "description": "Sprout interface string."
+  },
+  "uiTabResults": {
+    "message": "Résultats",
+    "description": "Sprout interface string."
+  },
+  "uiTabTerms": {
+    "message": "Termes",
+    "description": "Sprout interface string."
+  },
+  "uiTabWords": {
+    "message": "Mots",
+    "description": "Sprout interface string."
+  },
+  "uiTabKdp": {
+    "message": "KDP",
+    "description": "Sprout interface string."
+  },
+  "uiTabSaved": {
+    "message": "Enregistrés",
+    "description": "Sprout interface string."
+  },
+  "uiTabHistory": {
+    "message": "Historique",
+    "description": "Sprout interface string."
+  },
+  "uiExcludePlaceholder": {
+    "message": "Exclure une marque ou un mot",
+    "description": "Sprout interface string."
+  },
+  "uiExcludeLabel": {
+    "message": "Exclure des mots",
+    "description": "Sprout interface string."
+  },
+  "uiHide": {
+    "message": "Masquer",
+    "description": "Sprout interface string."
+  },
+  "uiFilterPlaceholder": {
+    "message": "Filtrer les mots-clés",
+    "description": "Sprout interface string."
+  },
+  "uiFilterLabel": {
+    "message": "Filtrer les suggestions",
+    "description": "Sprout interface string."
+  },
+  "uiSortLabel": {
+    "message": "Trier les suggestions",
+    "description": "Sprout interface string."
+  },
+  "uiSortAlpha": {
+    "message": "A → Z",
+    "description": "Sprout interface string."
+  },
+  "uiSortAlphaDesc": {
+    "message": "Z → A",
+    "description": "Sprout interface string."
+  },
+  "uiSortShortest": {
+    "message": "Plus courts",
+    "description": "Sprout interface string."
+  },
+  "uiSortLongest": {
+    "message": "Plus longs",
+    "description": "Sprout interface string."
+  },
+  "uiSortSource": {
+    "message": "Par expansion",
+    "description": "Sprout interface string."
+  },
+  "uiSelectVisible": {
+    "message": "Sélectionner les visibles",
+    "description": "Sprout interface string."
+  },
+  "uiExpandThis": {
+    "message": "Développer ceci",
+    "description": "Sprout interface string."
+  },
+  "uiCopy": {
+    "message": "Copier",
+    "description": "Sprout interface string."
+  },
+  "uiCopyCount": {
+    "message": "Copier $1",
+    "description": "Sprout interface string."
+  },
+  "uiCopied": {
+    "message": "Copié",
+    "description": "Sprout interface string."
+  },
+  "uiQuotes": {
+    "message": "Guillemets",
+    "description": "Sprout interface string."
+  },
+  "uiQuotesLabel": {
+    "message": "Compter la phrase exacte entre guillemets",
+    "description": "Sprout interface string."
+  },
+  "uiCount": {
+    "message": "Résultats",
+    "description": "Sprout interface string."
+  },
+  "uiStopCount": {
+    "message": "Arrêter le décompte",
+    "description": "Sprout interface string."
+  },
+  "uiTable": {
+    "message": "Tableau",
+    "description": "Sprout interface string."
+  },
+  "uiPanel": {
+    "message": "Panneau",
+    "description": "Sprout interface string."
+  },
+  "uiFooterVisible": {
+    "message": "Copier et exporter utilise la liste visible. Les résultats Amazon sont un nombre de pages, pas un volume de recherche. Sans lien avec Amazon.",
+    "description": "Sprout interface string."
+  },
+  "uiFooterChecked": {
+    "message": "Copier et exporter utilise les lignes cochées. Les résultats Amazon sont un nombre de pages, pas un volume de recherche. Sans lien avec Amazon.",
+    "description": "Sprout interface string."
+  },
+  "uiFeedback": {
+    "message": "Retour",
+    "description": "Sprout interface string."
+  },
+  "uiPrivacy": {
+    "message": "Confidentialité",
+    "description": "Sprout interface string."
+  },
+  "uiStopped": {
+    "message": "Arrêté.",
+    "description": "Sprout interface string."
+  },
+  "uiWordsTitle": {
+    "message": "Analyse des mots",
+    "description": "Sprout interface string."
+  },
+  "uiWordsHelp": {
+    "message": "Fréquence de chaque mot et de chaque paire dans ces suggestions, après les mots vides. Un clic filtre la liste. Ce n’est pas un volume de recherche.",
+    "description": "Sprout interface string."
+  },
+  "uiWordsEmpty": {
+    "message": "Développez d’abord un mot.",
+    "description": "Sprout interface string."
+  },
+  "uiPairs": {
+    "message": "Paires",
+    "description": "Sprout interface string."
+  },
+  "uiKdpTitle": {
+    "message": "Cases de mots-clés KDP",
+    "description": "Sprout interface string."
+  },
+  "uiKdpHelp": {
+    "message": "Sept cases de 50 caractères. Les mots du titre ou du sous-titre sont ignorés et un mot n’est pas réutilisé. Ce n’est pas un volume de recherche.",
+    "description": "Sprout interface string."
+  },
+  "uiSubtitle": {
+    "message": "Sous-titre",
+    "description": "Sprout interface string."
+  },
+  "uiCopyBoxes": {
+    "message": "Copier les 7 cases",
+    "description": "Sprout interface string."
+  },
+  "uiTermsTitle": {
+    "message": "Termes de recherche",
+    "description": "Sprout interface string."
+  },
+  "uiTermsHelp": {
+    "message": "Mots les plus fréquents de cette liste. Un clic en retire un. Pas un volume de recherche.",
+    "description": "Sprout interface string."
+  },
+  "uiTitleLabel": {
+    "message": "Déjà dans le titre ou les puces",
+    "description": "Sprout interface string."
+  },
+  "uiColStar": {
+    "message": "Étoile",
+    "description": "Sprout interface string."
+  },
+  "uiColKeyword": {
+    "message": "Mot-clé",
+    "description": "Sprout interface string."
+  },
+  "uiColPosition": {
+    "message": "Position",
+    "description": "Sprout interface string."
+  },
+  "uiColResults": {
+    "message": "Résultats Amazon",
+    "description": "Sprout interface string."
+  },
+  "uiColMarkets": {
+    "message": "Marchés",
+    "description": "Sprout interface string."
+  },
+  "uiColFrom": {
+    "message": "Depuis",
+    "description": "Sprout interface string."
+  },
+  "uiColOpen": {
+    "message": "Ouvrir",
+    "description": "Sprout interface string."
+  },
+  "uiLinkAmazon": {
+    "message": "Amazon",
+    "description": "Sprout interface string."
+  },
+  "uiLinkGoogle": {
+    "message": "Google",
+    "description": "Sprout interface string."
+  },
+  "uiLinkTrends": {
+    "message": "Trends",
+    "description": "Sprout interface string."
+  },
+  "uiRate": {
+    "message": "Noter Sprout",
+    "description": "Sprout interface string."
+  },
+  "uiNotNow": {
+    "message": "Pas maintenant",
+    "description": "Sprout interface string."
+  },
+  "uiRateBody": {
+    "message": "Trois recherches terminées sont enregistrées sur cet appareil. Une note dans le store aide d’autres vendeurs à trouver Sprout. Cet avis ne revient pas.",
+    "description": "Sprout interface string."
+  },
+  "uiBrands": {
+    "message": "Marques sur cette page",
+    "description": "Sprout interface string."
+  },
+  "uiNoBrand": {
+    "message": "Aucune marque de cette page ne correspond à « $1 ».",
+    "description": "Sprout interface string."
+  },
+  "uiUseTitle": {
+    "message": "Utiliser le titre comme mot de départ",
+    "description": "Sprout interface string."
+  },
+  "uiOneMore": {
+    "message": "Un niveau de plus",
+    "description": "Sprout interface string."
+  },
+  "uiPageTerms": {
+    "message": "Termes de la page et recherches associées de cette page Amazon. Ce n’est pas un volume de recherche.",
+    "description": "Sprout interface string."
+  },
+  "uiEmptyStart": {
+    "message": "Saisissez un mot. Sprout interroge l’autocomplétion Amazon pour ce préfixe, puis pour chaque lettre et chaque chiffre.",
+    "description": "Sprout interface string."
+  },
+  "uiStatusSaved": {
+    "message": "Enregistré",
+    "description": "Sprout interface string."
+  },
+  "uiStatusFailed": {
+    "message": "Échec",
+    "description": "Sprout interface string."
+  },
+  "uiStatusStopped": {
+    "message": "Arrêté",
+    "description": "Sprout interface string."
+  },
+  "uiExpandSuggestions": {
+    "message": "Développer les suggestions",
+    "description": "Sprout interface string."
+  },
+  "deptAll": {
+    "message": "Tous les rayons",
+    "description": "Sprout interface string."
+  },
+  "deptBooks": {
+    "message": "Livres",
+    "description": "Sprout interface string."
+  },
+  "deptKindle": {
+    "message": "Kindle",
+    "description": "Sprout interface string."
+  },
+  "deptFashion": {
+    "message": "Mode",
+    "description": "Sprout interface string."
+  },
+  "deptElectronics": {
+    "message": "Électronique",
+    "description": "Sprout interface string."
+  },
+  "deptGarden": {
+    "message": "Maison et jardin",
+    "description": "Sprout interface string."
+  },
+  "deptKitchen": {
+    "message": "Cuisine",
+    "description": "Sprout interface string."
+  },
+  "deptToys": {
+    "message": "Jouets",
+    "description": "Sprout interface string."
+  },
+  "deptSports": {
+    "message": "Sports",
+    "description": "Sprout interface string."
+  },
+  "deptBeauty": {
+    "message": "Beauté",
+    "description": "Sprout interface string."
+  },
+  "deptHealth": {
+    "message": "Santé",
+    "description": "Sprout interface string."
+  },
+  "deptOffice": {
+    "message": "Bureau",
+    "description": "Sprout interface string."
+  }
+}

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+Chrome Web Store locales. The manifest sets `default_locale` to `en` and uses `__MSG_extName__` and `__MSG_extDescription__`. Message catalogs for English, German, Spanish, French, Italian, and Slovak live in `_locales`. The side panel and keyword table use `chrome.i18n.getMessage`, with the English string as the fallback.
+
 ## 1.0.0
 
 First store release. The name is Sprout – Amazon Keyword Research for Sellers. The seed field keeps spaces while typing. Stop cancels the queue and says Stopped. Space on asks only for `seed letter`, not the joined form as well. Result counts read “N results for” and “1-48 of N results”, and a failed read explains itself. Related searches and brand filters come from the Amazon page. A completion host that returns 502 is skipped for the rest of the session. Books and Kindle send `alias` and `search-alias`. The package asks only for `storage`, `sidePanel`, and the Amazon storefront and completion hosts already used for suggestions. A privacy page, a feedback link, and a one-time rating note after three finished runs are included. Listing text for English, German, Spanish, French, and Italian is in `store/LISTING.md`.

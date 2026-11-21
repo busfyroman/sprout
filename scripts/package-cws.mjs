@@ -1,13 +1,18 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dist = path.join(root, 'dist')
+cpSync(path.join(root, 'public', '_locales'), path.join(dist, '_locales'), { recursive: true })
 const manifest = JSON.parse(readFileSync(path.join(dist, 'manifest.json'), 'utf8'))
 const version = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).version
 
+if (manifest.default_locale !== 'en') throw new Error('Manifest is missing default_locale en')
+if (manifest.name !== '__MSG_extName__' || manifest.description !== '__MSG_extDescription__') {
+  throw new Error('Manifest name and description must use Chrome i18n messages')
+}
 if (manifest.version !== version) {
   throw new Error(`Manifest version ${manifest.version} does not match package.json ${version}`)
 }

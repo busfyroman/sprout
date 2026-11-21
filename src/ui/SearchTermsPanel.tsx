@@ -3,6 +3,7 @@ import { copyText } from '../lib/export'
 import { buildSearchTerms, clampLimit } from '../lib/search-terms'
 import { Button } from './components/button'
 import { Input } from './components/input'
+import { t } from './i18n'
 
 export function SearchTermsPanel({
   phrases,
@@ -43,9 +44,9 @@ export function SearchTermsPanel({
     <section className="sprout-scroll min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
       <div className="flex items-end justify-between gap-2">
         <div>
-          <h2 className="text-sm font-medium text-ink">Backend search terms</h2>
+          <h2 className="text-sm font-medium text-ink">{t('uiTermsTitle', 'Backend search terms')}</h2>
           <p className="mt-0.5 text-[11px] leading-snug text-muted">
-            Most common words in this list. Click one to drop it. Not search volume.
+            {t('uiTermsHelp', 'Most common words in this list. Click one to drop it. Not search volume.')}
           </p>
         </div>
         <label className="shrink-0 text-[11px] text-muted">
@@ -62,7 +63,7 @@ export function SearchTermsPanel({
         </label>
       </div>
       <label className="block text-[11px] text-muted">
-        Already in the title or bullets
+        {t('uiTitleLabel', 'Already in the title or bullets')}
         <textarea
           value={listingText}
           onChange={(event) => onListingText(event.target.value)}

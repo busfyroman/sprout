@@ -3,6 +3,7 @@ import { analyzeWords, buildKdpBoxes } from '../lib/analysis'
 import { copyText } from '../lib/export'
 import { Button } from './components/button'
 import { Input } from './components/input'
+import { t } from './i18n'
 
 export function WordsPanel({
   phrases,
@@ -15,13 +16,13 @@ export function WordsPanel({
   return (
     <section className="sprout-scroll min-h-0 flex-1 space-y-3 overflow-y-auto px-3 pb-3">
       <div>
-        <h2 className="text-sm font-medium">Word analysis</h2>
+        <h2 className="text-sm font-medium">{t('uiWordsTitle', 'Word analysis')}</h2>
         <p className="mt-1 text-[11px] leading-snug text-muted">
-          How often each word and pair shows up in these suggestions, after stop words. Click one to filter the list. Counts are not search volume.
+          {t('uiWordsHelp', 'How often each word and pair shows up in these suggestions, after stop words. Click one to filter the list. Counts are not search volume.')}
         </p>
       </div>
-      <WordCloud title="Words" items={words.slice(0, 40)} onFilter={onFilter} />
-      <WordCloud title="Pairs" items={pairs.slice(0, 24)} onFilter={onFilter} />
+      <WordCloud title={t('uiTabWords', 'Words')} items={words.slice(0, 40)} onFilter={onFilter} />
+      <WordCloud title={t('uiPairs', 'Pairs')} items={pairs.slice(0, 24)} onFilter={onFilter} />
     </section>
   )
 }
@@ -39,7 +40,7 @@ function WordCloud({
     <div>
       <h3 className="mb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted">{title}</h3>
       <div className="flex flex-wrap gap-1">
-        {items.length === 0 ? <p className="text-xs text-muted">Expand a seed first.</p> : items.map((item) => (
+        {items.length === 0 ? <p className="text-xs text-muted">{t('uiWordsEmpty', 'Expand a seed first.')}</p> : items.map((item) => (
           <button
             key={item.text}
             type="button"
@@ -74,23 +75,23 @@ export function KdpPanel({
   return (
     <section className="sprout-scroll min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">KDP keyword boxes</h2>
+        <h2 className="text-sm font-medium">{t('uiKdpTitle', 'KDP keyword boxes')}</h2>
         <select
           aria-label="KDP department"
           value={kind}
           onChange={(event) => onKind(event.target.value as 'stripbooks' | 'digital-text')}
           className="h-8 rounded-lg border border-line bg-cream px-2 text-xs"
         >
-          <option value="stripbooks">Books</option>
-          <option value="digital-text">Kindle</option>
+          <option value="stripbooks">{t('deptBooks', 'Books')}</option>
+          <option value="digital-text">{t('deptKindle', 'Kindle')}</option>
         </select>
       </div>
       <p className="text-[11px] leading-snug text-muted">
-        Seven boxes, 50 characters each. Words already in the title or subtitle are skipped, and a word is used only once. This is not search volume.
+        {t('uiKdpHelp', 'Seven boxes, 50 characters each. Words already in the title or subtitle are skipped, and a word is used only once. This is not search volume.')}
       </p>
       <label className="block text-[11px] text-muted">
-        Subtitle
-        <Input value={subtitleText} onChange={(event) => onSubtitle(event.target.value)} className="mt-1 h-8 text-xs" aria-label="Book subtitle" />
+        {t('uiSubtitle', 'Subtitle')}
+        <Input value={subtitleText} onChange={(event) => onSubtitle(event.target.value)} className="mt-1 h-8 text-xs" aria-label={t('uiSubtitle', 'Subtitle')} />
       </label>
       <ol className="space-y-1">
         {boxes.map((box, index) => (
@@ -111,7 +112,7 @@ export function KdpPanel({
           })
         }}
       >
-        {copied ? 'Copied' : 'Copy 7 boxes'}
+        {copied ? t('uiCopied', 'Copied') : t('uiCopyBoxes', 'Copy 7 boxes')}
       </Button>
     </section>
   )

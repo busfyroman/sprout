@@ -5,6 +5,7 @@ import { readMarketplace, readPageSeed } from '../lib/page-context'
 import { readLivePageIntel, type PageIntel } from '../lib/page-intel'
 import cssText from '../styles/globals.css?inline'
 import { App } from '../ui/App'
+import { t } from '../ui/i18n'
 
 const HOST_ID = 'sprout-amazon-suggestion-expander'
 
@@ -77,7 +78,7 @@ function Overlay() {
           </span>
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium text-ink">{liveSeed || 'Sprout'}</span>
-            <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">Expand suggestions</span>
+            <span className="block text-[10px] font-medium uppercase tracking-[0.14em] text-muted">{t('uiExpandSuggestions', 'Expand suggestions')}</span>
           </span>
         </button>
       )}

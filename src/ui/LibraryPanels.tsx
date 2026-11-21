@@ -1,6 +1,7 @@
 import { copyText, downloadBytes, downloadText, safeSpreadsheetText, toCsv } from '../lib/export'
 import { buildXlsx } from '../lib/xlsx'
 import { historyStatusLabel } from '../lib/library'
+import { t } from './i18n'
 import { getMarketplace } from '../lib/marketplaces'
 import type { HistoryEntry, SavedKeyword } from '../lib/types'
 import { formatWhen } from './format'
@@ -73,7 +74,7 @@ export function HistoryPanel({
                     {' · '}
                     {formatWhen(item.savedAt)}
                     {' · '}
-                    {historyStatusLabel(item.run.status)}
+                    {t(item.run.status === 'error' ? 'uiStatusFailed' : item.run.status === 'cancelled' ? 'uiStatusStopped' : 'uiStatusSaved', historyStatusLabel(item.run.status))}
                     {' · '}
                     {item.run.suggestions.length} keywords
                   </span>

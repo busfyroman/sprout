@@ -24,6 +24,7 @@ import { Button } from './components/button'
 import { Input } from './components/input'
 import { Switch } from './components/switch'
 import { formatWhen } from './format'
+import { departmentName, t } from './i18n'
 import { useResearch } from './useResearch'
 
 export type Surface = 'popup' | 'sidepanel' | 'overlay' | 'page'
@@ -133,7 +134,11 @@ export function App({
   }
 
   const progress = run && run.totalQueries > 0 ? Math.min(100, Math.round((run.finishedQueries / run.totalQueries) * 100)) : 0
-  const copyLabel = copyState === 'done' ? 'Copied' : selectedItems.length > 0 ? `Copy ${selectedItems.length}` : `Copy ${exportCount || ''}`.trim()
+  const copyLabel = copyState === 'done'
+    ? t('uiCopied', 'Copied')
+    : (selectedItems.length > 0 || exportCount > 0)
+      ? t('uiCopyCount', 'Copy $1', String(selectedItems.length > 0 ? selectedItems.length : exportCount))
+      : t('uiCopy', 'Copy')
 
   async function onCopy() {
     if (exportItems.length === 0) return
@@ -206,12 +211,12 @@ export function App({
   }
 
   const tabs: Array<{ id: PanelTab; label: string; show: boolean }> = [
-    { id: 'results', label: 'Results', show: true },
-    { id: 'terms', label: 'Terms', show: hasPro('searchTerms') },
-    { id: 'words', label: 'Words', show: true },
-    { id: 'kdp', label: 'KDP', show: true },
-    { id: 'saved', label: 'Saved', show: hasPro('savedKeywords') },
-    { id: 'history', label: 'History', show: hasPro('history') },
+    { id: 'results', label: t('uiTabResults', 'Results'), show: true },
+    { id: 'terms', label: t('uiTabTerms', 'Terms'), show: hasPro('searchTerms') },
+    { id: 'words', label: t('uiTabWords', 'Words'), show: true },
+    { id: 'kdp', label: t('uiTabKdp', 'KDP'), show: true },
+    { id: 'saved', label: t('uiTabSaved', 'Saved'), show: hasPro('savedKeywords') },
+    { id: 'history', label: t('uiTabHistory', 'History'), show: hasPro('history') },
   ]
 
   function rowPosition(item: { value: string }): string {
@@ -311,7 +316,7 @@ export function App({
           </span>
           <div className="min-w-0">
             <div className="wordmark text-[22px] leading-none">Sprout</div>
-            <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">For Amazon sellers</div>
+            <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted">{t('uiForSellers', 'For Amazon sellers')}</div>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -360,8 +365,8 @@ export function App({
             value={state.seed}
             disabled={running}
             onChange={(event) => research.setSeed(event.target.value)}
-            placeholder="e.g. yoga mat"
-            aria-label="Seed keyword"
+            placeholder={t('uiSeedPlaceholder', 'e.g. yoga mat')}
+            aria-label={t('uiSeedLabel', 'Seed keyword')}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
@@ -370,10 +375,10 @@ export function App({
             className="h-10 border-0 bg-transparent px-2 shadow-none placeholder:text-ink/35 focus-visible:ring-0"
           />
           {research.runningHere ? (
-            <Button type="button" variant="secondary" size="lg" onClick={research.stop}>Stop</Button>
+            <Button type="button" variant="secondary" size="lg" onClick={research.stop}>{t('uiStop', 'Stop')}</Button>
           ) : (
             <Button type="submit" size="lg" disabled={!state.seed.trim() || research.lockedByOther}>
-              {selectedMarkets.length > 1 ? `Expand ${selectedMarkets.length}` : 'Expand'}
+              {selectedMarkets.length > 1 ? t('uiExpandCount', 'Expand $1', String(selectedMarkets.length)) : t('uiExpand', 'Expand')}
             </Button>
           )}
         </div>
@@ -390,7 +395,7 @@ export function App({
               onClick={() => research.setMode(mode.id)}
               className={`h-7 rounded-md px-2.5 text-xs font-medium disabled:opacity-50 ${state.mode === mode.id ? 'bg-cream text-ink shadow-sm' : 'text-muted hover:text-ink'}`}
             >
-              {mode.label}
+              {t(mode.id === 'suffix' ? 'uiSuffix' : mode.id === 'prefix' ? 'uiPrefix' : 'uiBoth', mode.label)}
             </button>
           ))}
         </div>
@@ -399,30 +404,30 @@ export function App({
             checked={state.includeSpace}
             disabled={running}
             onCheckedChange={(checked) => research.setIncludeSpace(checked === true)}
-            aria-label="Insert a space before the extra letter"
+            aria-label={t('uiSpaceLabel', 'Insert a space before the extra letter')}
           />
-          Space
+          {t('uiSpace', 'Space')}
         </label>
         <label className="flex items-center gap-2 text-xs text-ink">
           <Switch
             checked={state.deepExpand}
             disabled={running}
             onCheckedChange={(checked) => research.setDeepExpand(checked === true)}
-            aria-label="Deep expand with connector words"
+            aria-label={t('uiDeepLabel', 'Deep expand with connector words')}
           />
-          Deep
+          {t('uiDeep', 'Deep')}
         </label>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
         <select
-          aria-label="Department"
+          aria-label={t('uiDepartment', 'Department')}
           value={state.kdpMode && state.departmentAlias !== 'digital-text' ? 'stripbooks' : state.departmentAlias}
           disabled={running}
           onChange={(event) => research.setDepartmentAlias(event.target.value)}
           className="h-8 rounded-lg border border-line bg-cream px-2 text-xs"
         >
           {DEPARTMENTS.map((item) => (
-            <option key={item.id} value={item.id}>{item.label}</option>
+            <option key={item.id} value={item.id}>{departmentName(item.id, item.label)}</option>
           ))}
         </select>
         <label className="flex items-center gap-1.5 text-xs text-ink">
@@ -430,32 +435,32 @@ export function App({
             checked={state.kdpMode}
             disabled={running}
             onCheckedChange={(checked) => research.setKdpMode(checked === true)}
-            aria-label="KDP books mode"
+            aria-label={t('uiKdpLabel', 'KDP books mode')}
           />
-          KDP
+          {t('uiKdp', 'KDP')}
         </label>
         <select
-          aria-label="Word count"
+          aria-label={t('uiWordCount', 'Word count')}
           value={state.wordCountFilter}
           onChange={(event) => research.setWordCountFilter(event.target.value as typeof state.wordCountFilter)}
           className="h-8 rounded-lg border border-line bg-cream px-2 text-xs"
         >
-          <option value="any">Any length</option>
-          <option value="1">1 word</option>
-          <option value="2">2 words</option>
-          <option value="3+">3+ words</option>
+          <option value="any">{t('uiAnyLength', 'Any length')}</option>
+          <option value="1">{t('uiOneWord', '1 word')}</option>
+          <option value="2">{t('uiTwoWords', '2 words')}</option>
+          <option value="3+">{t('uiThreePlus', '3+ words')}</option>
         </select>
         <select
-          aria-label="Seed position"
+          aria-label={t('uiSeedPosition', 'Seed position')}
           value={state.positionFilter}
           onChange={(event) => research.setPositionFilter(event.target.value as typeof state.positionFilter)}
           className="h-8 rounded-lg border border-line bg-cream px-2 text-xs"
         >
-          <option value="any">Any position</option>
-          <option value="before">Before seed</option>
-          <option value="after">After seed</option>
-          <option value="between">Between</option>
-          <option value="other">Other</option>
+          <option value="any">{t('uiAnyPosition', 'Any position')}</option>
+          <option value="before">{t('uiBefore', 'Before seed')}</option>
+          <option value="after">{t('uiAfter', 'After seed')}</option>
+          <option value="between">{t('uiBetween', 'Between')}</option>
+          <option value="other">{t('uiOther', 'Other')}</option>
         </select>
       </div>
       <div className="mt-2 flex items-center gap-1.5 px-3">
@@ -463,24 +468,24 @@ export function App({
           value={state.translatedSeed}
           disabled={running}
           onChange={(event) => research.setTranslatedSeed(event.target.value)}
-          placeholder="Translated seed"
-          aria-label="Translated seed"
+          placeholder={t('uiTranslatedPlaceholder', 'Translated seed')}
+          aria-label={t('uiTranslatedPlaceholder', 'Translated seed')}
           className="h-8 text-xs"
         />
-        <Button type="button" size="sm" variant="outline" disabled={running || !state.seed.trim()} onClick={() => void translateSeed()}>Translate</Button>
+        <Button type="button" size="sm" variant="outline" disabled={running || !state.seed.trim()} onClick={() => void translateSeed()}>{t('uiTranslate', 'Translate')}</Button>
         <label className="flex shrink-0 items-center gap-1 text-[11px] text-ink">
           <input
             type="checkbox"
             checked={state.useTranslatedSeed}
             disabled={running}
             onChange={(event) => research.setUseTranslatedSeed(event.target.checked)}
-            aria-label="Expand the translated seed"
+            aria-label={t('uiUseLabel', 'Expand the translated seed')}
           />
-          Use
+          {t('uiUse', 'Use')}
         </label>
       </div>
       <p className="truncate px-3 pt-1.5 text-[11px] text-muted" title={plan.example}>
-        <span className="tabular-nums">{selectedMarkets.length > 1 ? `${selectedMarkets.length} × ${plan.count}` : plan.count} prefixes</span>
+        <span className="tabular-nums">{selectedMarkets.length > 1 ? `${selectedMarkets.length} × ${plan.count}` : t('uiPrefixes', '$1 prefixes', String(plan.count))}</span>
         <span> · {plan.example}</span>
       </p>
 
@@ -522,7 +527,7 @@ export function App({
 
       {run && run.status !== 'running' && tab === 'results' && (
         <p className="px-3 pt-2 text-[11px] text-muted">
-          {run.status === 'cancelled' ? 'Stopped. ' : ''}
+          {run.status === 'cancelled' ? `${t('uiStopped', 'Stopped.')} ` : ''}
           {run.seed !== state.seed.trim() ? `Showing “${run.seed}”. ` : ''}
           {formatWhen(run.finishedAt ?? run.startedAt)}
           {' · '}
@@ -544,11 +549,11 @@ export function App({
               <Input
                 value={excludeDraft}
                 onChange={(event) => setExcludeDraft(event.target.value)}
-                placeholder="Exclude a brand or word"
-                aria-label="Exclude words"
+                placeholder={t('uiExcludePlaceholder', 'Exclude a brand or word')}
+                aria-label={t('uiExcludeLabel', 'Exclude words')}
                 className="h-8 text-xs"
               />
-              <Button type="submit" size="sm" variant="outline" disabled={!excludeDraft.trim()}>Hide</Button>
+              <Button type="submit" size="sm" variant="outline" disabled={!excludeDraft.trim()}>{t('uiHide', 'Hide')}</Button>
             </div>
             {state.excludedWords.length > 0 && (
               <div className="mt-1.5 flex flex-wrap gap-1">
@@ -568,13 +573,13 @@ export function App({
             {pageIntel && (pageIntel.brands.length > 0 || pageIntel.related.length > 0 || pageIntel.productTitle) && (
               <div className="mt-2 space-y-1">
                 {pageIntel.productTitle && (
-                  <button type="button" className="text-[11px] text-moss" onClick={() => research.setSeed(pageIntel.productTitle)}>
-                    Use title as seed
+                    <button type="button" className="text-[11px] text-moss" onClick={() => research.setSeed(pageIntel.productTitle)}>
+                    {t('uiUseTitle', 'Use title as seed')}
                   </button>
                 )}
                 {pageIntel.brands.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <span className="w-full text-[10px] text-muted">Brands on this page</span>
+                    <span className="w-full text-[10px] text-muted">{t('uiBrands', 'Brands on this page')}</span>
                     {pageIntel.brands.filter((brand) => {
                       const draft = excludeDraft.trim().toLowerCase()
                       return !draft || brand.toLowerCase().includes(draft)
@@ -589,13 +594,13 @@ export function App({
                       </button>
                     ))}
                     {excludeDraft.trim() && pageIntel.brands.every((brand) => !brand.toLowerCase().includes(excludeDraft.trim().toLowerCase())) && (
-                      <span className="text-[10px] text-muted">No brand on this page matches “{excludeDraft.trim()}”.</span>
+                      <span className="text-[10px] text-muted">{t('uiNoBrand', 'No brand on this page matches “$1”.', excludeDraft.trim())}</span>
                     )}
                   </div>
                 )}
                 {pageIntel.related.length > 0 && (
                   <div className="flex flex-wrap gap-1">
-                    <button type="button" className="text-[10px] text-moss" onClick={() => void deepenRelated()}>One more level</button>
+                    <button type="button" className="text-[10px] text-moss" onClick={() => void deepenRelated()}>{t('uiOneMore', 'One more level')}</button>
                     {[...new Set([...pageIntel.related, ...extraRelated])].slice(0, 12).map((term) => (
                       <button
                         key={term}
@@ -609,7 +614,7 @@ export function App({
                     ))}
                   </div>
                 )}
-                <p className="text-[10px] text-muted">Page terms and related searches from this Amazon page. They are not search volume.</p>
+                <p className="text-[10px] text-muted">{t('uiPageTerms', 'Page terms and related searches from this Amazon page. They are not search volume.')}</p>
               </div>
             )}
           </form>
@@ -709,7 +714,7 @@ export function App({
 
       {shouldShowRatePrompt(state.history.filter((item) => item.run?.status === 'done').length, rateDismissed) && !running && (
         <div className="mx-3 mb-2 rounded-lg border border-line bg-sand px-2.5 py-2 text-[11px] leading-snug text-ink">
-          <p>Three finished runs are saved on this device. A store rating helps other sellers find Sprout. This note stays dismissed.</p>
+          <p>{t('uiRateBody', 'Three finished runs are saved on this device. A store rating helps other sellers find Sprout. This note stays dismissed.')}</p>
           <div className="mt-1.5 flex gap-1.5">
             <Button
               type="button"
@@ -720,7 +725,7 @@ export function App({
                 openExternal(storeReviewUrl())
               }}
             >
-              Rate Sprout
+              {t('uiRate', 'Rate Sprout')}
             </Button>
             <Button
               type="button"
@@ -731,7 +736,7 @@ export function App({
                 void dismissRatePrompt()
               }}
             >
-              Not now
+              {t('uiNotNow', 'Not now')}
             </Button>
           </div>
         </div>
@@ -758,32 +763,33 @@ export function App({
             Ads
           </Button>
           <label className="flex items-center gap-1 text-[10px] text-muted">
-            <input type="checkbox" checked={exactCount} onChange={(event) => setExactCount(event.target.checked)} aria-label="Count exact quoted matches" />
-            Quotes
+            <input type="checkbox" checked={exactCount} onChange={(event) => setExactCount(event.target.checked)}             aria-label={t('uiQuotesLabel', 'Count exact quoted matches')} />
+            {t('uiQuotes', 'Quotes')}
           </label>
           <Button type="button" size="sm" variant="ghost" className="px-2" onClick={() => void countSelected()}>
-            {counting ? 'Stop count' : 'Results'}
+            {counting ? t('uiStopCount', 'Stop count') : t('uiCount', 'Results')}
           </Button>
           {surface !== 'page' && (
             <Button type="button" size="sm" variant="ghost" className="ml-auto px-2" onClick={() => void openTable()}>
               <Table2 className="h-3.5 w-3.5" aria-hidden />
-              Table
-            </Button>
+            {t('uiTable', 'Table')}
+          </Button>
           )}
           {surface === 'popup' && (
             <Button type="button" size="sm" variant="ghost" className="px-2" onClick={() => void openSidePanel()}>
               <PanelRight className="h-3.5 w-3.5" aria-hidden />
-              Panel
+              {t('uiPanel', 'Panel')}
             </Button>
           )}
         </div>
         <p className="mt-1.5 text-[10px] leading-snug text-muted">
-          {selectedItems.length > 0 ? 'Copy and export use the checked rows.' : 'Copy and export use the visible list.'}
-          {' '}Amazon results is a page count, not search volume. Not affiliated with Amazon.
+          {selectedItems.length > 0
+            ? t('uiFooterChecked', 'Copy and export use the checked rows. Amazon results is a page count, not search volume. Not affiliated with Amazon.')
+            : t('uiFooterVisible', 'Copy and export use the visible list. Amazon results is a page count, not search volume. Not affiliated with Amazon.')}
           {' '}
-          <button type="button" className="underline decoration-line underline-offset-2 hover:text-ink" onClick={() => openExternal(PROJECT.issuesUrl)}>Feedback</button>
+          <button type="button" className="underline decoration-line underline-offset-2 hover:text-ink" onClick={() => openExternal(PROJECT.issuesUrl)}>{t('uiFeedback', 'Feedback')}</button>
           {' · '}
-          <button type="button" className="underline decoration-line underline-offset-2 hover:text-ink" onClick={() => openExternal(PROJECT.privacyUrl)}>Privacy</button>
+          <button type="button" className="underline decoration-line underline-offset-2 hover:text-ink" onClick={() => openExternal(PROJECT.privacyUrl)}>{t('uiPrivacy', 'Privacy')}</button>
         </p>
       </footer>
     </div>
@@ -799,5 +805,5 @@ function emptyLabel(status: string | null, seed: string, filter: string, count: 
   if (filter.trim() && count > 0) return `Nothing matches “${filter.trim()}”.`
   if (status === 'running') return `Asking Amazon about “${seed.trim() || 'your seed'}”…`
   if (status === 'done' || status === 'cancelled' || status === 'error') return 'No suggestions in this list.'
-  return 'Enter a seed keyword. Sprout asks Amazon for that prefix, then for every letter and digit — the same autocomplete shoppers see.'
+  return t('uiEmptyStart', 'Enter a seed keyword. Sprout asks Amazon for that prefix, then for every letter and digit — the same autocomplete shoppers see.')
 }

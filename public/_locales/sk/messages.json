@@ -1,0 +1,458 @@
+{
+  "extName": {
+    "message": "Sprout – Výskum kľúčových slov pre Amazon",
+    "description": "Extension name in the store and chrome://extensions. Maximum 75 characters."
+  },
+  "extDescription": {
+    "message": "Bezplatný výskum kľúčových slov pre Amazon. Jeden seed sa rozšíri na našeptávač. Bez účtu, bez sledovania, bez väzby na Amazon.",
+    "description": "Store summary. Maximum 132 characters."
+  },
+  "extActionTitle": {
+    "message": "Sprout – kľúčové slová",
+    "description": "Toolbar tooltip."
+  },
+  "uiForSellers": {
+    "message": "Pre predajcov na Amazone",
+    "description": "Sprout interface string."
+  },
+  "uiSeedPlaceholder": {
+    "message": "napr. podložka na jogu",
+    "description": "Sprout interface string."
+  },
+  "uiSeedLabel": {
+    "message": "Seed kľúčové slovo",
+    "description": "Sprout interface string."
+  },
+  "uiExpand": {
+    "message": "Rozšíriť",
+    "description": "Sprout interface string."
+  },
+  "uiExpandCount": {
+    "message": "Rozšíriť $1",
+    "description": "Sprout interface string."
+  },
+  "uiStop": {
+    "message": "Zastaviť",
+    "description": "Sprout interface string."
+  },
+  "uiSuffix": {
+    "message": "Prípona",
+    "description": "Sprout interface string."
+  },
+  "uiPrefix": {
+    "message": "Predpona",
+    "description": "Sprout interface string."
+  },
+  "uiBoth": {
+    "message": "Obe",
+    "description": "Sprout interface string."
+  },
+  "uiSpace": {
+    "message": "Medzera",
+    "description": "Sprout interface string."
+  },
+  "uiSpaceLabel": {
+    "message": "Vložiť medzeru pred pridané písmeno",
+    "description": "Sprout interface string."
+  },
+  "uiDeep": {
+    "message": "Hlboko",
+    "description": "Sprout interface string."
+  },
+  "uiDeepLabel": {
+    "message": "Hlbšie rozšírenie so spojkami",
+    "description": "Sprout interface string."
+  },
+  "uiKdp": {
+    "message": "KDP",
+    "description": "Sprout interface string."
+  },
+  "uiKdpLabel": {
+    "message": "Režim kníh KDP",
+    "description": "Sprout interface string."
+  },
+  "uiDepartment": {
+    "message": "Oddelenie",
+    "description": "Sprout interface string."
+  },
+  "uiAnyLength": {
+    "message": "Ľubovoľná dĺžka",
+    "description": "Sprout interface string."
+  },
+  "uiOneWord": {
+    "message": "1 slovo",
+    "description": "Sprout interface string."
+  },
+  "uiTwoWords": {
+    "message": "2 slová",
+    "description": "Sprout interface string."
+  },
+  "uiThreePlus": {
+    "message": "3+ slov",
+    "description": "Sprout interface string."
+  },
+  "uiWordCount": {
+    "message": "Počet slov",
+    "description": "Sprout interface string."
+  },
+  "uiAnyPosition": {
+    "message": "Ľubovoľná pozícia",
+    "description": "Sprout interface string."
+  },
+  "uiBefore": {
+    "message": "Pred seedom",
+    "description": "Sprout interface string."
+  },
+  "uiAfter": {
+    "message": "Za seedom",
+    "description": "Sprout interface string."
+  },
+  "uiBetween": {
+    "message": "Medzi",
+    "description": "Sprout interface string."
+  },
+  "uiOther": {
+    "message": "Iné",
+    "description": "Sprout interface string."
+  },
+  "uiSeedPosition": {
+    "message": "Pozícia seedu",
+    "description": "Sprout interface string."
+  },
+  "uiTranslatedPlaceholder": {
+    "message": "Preložený seed",
+    "description": "Sprout interface string."
+  },
+  "uiTranslate": {
+    "message": "Preložiť",
+    "description": "Sprout interface string."
+  },
+  "uiUse": {
+    "message": "Použiť",
+    "description": "Sprout interface string."
+  },
+  "uiUseLabel": {
+    "message": "Rozšíriť preložený seed",
+    "description": "Sprout interface string."
+  },
+  "uiPrefixes": {
+    "message": "$1 prefixov",
+    "description": "Sprout interface string."
+  },
+  "uiTabResults": {
+    "message": "Výsledky",
+    "description": "Sprout interface string."
+  },
+  "uiTabTerms": {
+    "message": "Výrazy",
+    "description": "Sprout interface string."
+  },
+  "uiTabWords": {
+    "message": "Slová",
+    "description": "Sprout interface string."
+  },
+  "uiTabKdp": {
+    "message": "KDP",
+    "description": "Sprout interface string."
+  },
+  "uiTabSaved": {
+    "message": "Uložené",
+    "description": "Sprout interface string."
+  },
+  "uiTabHistory": {
+    "message": "História",
+    "description": "Sprout interface string."
+  },
+  "uiExcludePlaceholder": {
+    "message": "Vylúčiť značku alebo slovo",
+    "description": "Sprout interface string."
+  },
+  "uiExcludeLabel": {
+    "message": "Vylúčiť slová",
+    "description": "Sprout interface string."
+  },
+  "uiHide": {
+    "message": "Skryť",
+    "description": "Sprout interface string."
+  },
+  "uiFilterPlaceholder": {
+    "message": "Filtrovať kľúčové slová",
+    "description": "Sprout interface string."
+  },
+  "uiFilterLabel": {
+    "message": "Filtrovať návrhy",
+    "description": "Sprout interface string."
+  },
+  "uiSortLabel": {
+    "message": "Zoradiť návrhy",
+    "description": "Sprout interface string."
+  },
+  "uiSortAlpha": {
+    "message": "A → Z",
+    "description": "Sprout interface string."
+  },
+  "uiSortAlphaDesc": {
+    "message": "Z → A",
+    "description": "Sprout interface string."
+  },
+  "uiSortShortest": {
+    "message": "Najkratšie",
+    "description": "Sprout interface string."
+  },
+  "uiSortLongest": {
+    "message": "Najdlhšie",
+    "description": "Sprout interface string."
+  },
+  "uiSortSource": {
+    "message": "Podľa rozšírenia",
+    "description": "Sprout interface string."
+  },
+  "uiSelectVisible": {
+    "message": "Vybrať viditeľné",
+    "description": "Sprout interface string."
+  },
+  "uiExpandThis": {
+    "message": "Rozšíriť toto",
+    "description": "Sprout interface string."
+  },
+  "uiCopy": {
+    "message": "Kopírovať",
+    "description": "Sprout interface string."
+  },
+  "uiCopyCount": {
+    "message": "Kopírovať $1",
+    "description": "Sprout interface string."
+  },
+  "uiCopied": {
+    "message": "Skopírované",
+    "description": "Sprout interface string."
+  },
+  "uiQuotes": {
+    "message": "Úvodzovky",
+    "description": "Sprout interface string."
+  },
+  "uiQuotesLabel": {
+    "message": "Počítať presnú frázu v úvodzovkách",
+    "description": "Sprout interface string."
+  },
+  "uiCount": {
+    "message": "Výsledky",
+    "description": "Sprout interface string."
+  },
+  "uiStopCount": {
+    "message": "Zastaviť počet",
+    "description": "Sprout interface string."
+  },
+  "uiTable": {
+    "message": "Tabuľka",
+    "description": "Sprout interface string."
+  },
+  "uiPanel": {
+    "message": "Panel",
+    "description": "Sprout interface string."
+  },
+  "uiFooterVisible": {
+    "message": "Kopírovanie a export používajú viditeľný zoznam. Výsledky Amazonu sú počet na stránke, nie objem hľadania. Bez väzby na Amazon.",
+    "description": "Sprout interface string."
+  },
+  "uiFooterChecked": {
+    "message": "Kopírovanie a export používajú zaškrtnuté riadky. Výsledky Amazonu sú počet na stránke, nie objem hľadania. Bez väzby na Amazon.",
+    "description": "Sprout interface string."
+  },
+  "uiFeedback": {
+    "message": "Spätná väzba",
+    "description": "Sprout interface string."
+  },
+  "uiPrivacy": {
+    "message": "Súkromie",
+    "description": "Sprout interface string."
+  },
+  "uiStopped": {
+    "message": "Zastavené.",
+    "description": "Sprout interface string."
+  },
+  "uiWordsTitle": {
+    "message": "Analýza slov",
+    "description": "Sprout interface string."
+  },
+  "uiWordsHelp": {
+    "message": "Ako často sa slovo a dvojica objavia v týchto návrhoch po vynechaní stop slov. Klik filtruje zoznam. Nie je to objem hľadania.",
+    "description": "Sprout interface string."
+  },
+  "uiWordsEmpty": {
+    "message": "Najprv rozšírte seed.",
+    "description": "Sprout interface string."
+  },
+  "uiPairs": {
+    "message": "Dvojice",
+    "description": "Sprout interface string."
+  },
+  "uiKdpTitle": {
+    "message": "KDP polia kľúčových slov",
+    "description": "Sprout interface string."
+  },
+  "uiKdpHelp": {
+    "message": "Sedem polí po 50 znakoch. Slová z titulku a podtitulku sa vynechajú a slovo sa použije len raz. Nie je to objem hľadania.",
+    "description": "Sprout interface string."
+  },
+  "uiSubtitle": {
+    "message": "Podtitulok",
+    "description": "Sprout interface string."
+  },
+  "uiCopyBoxes": {
+    "message": "Kopírovať 7 polí",
+    "description": "Sprout interface string."
+  },
+  "uiTermsTitle": {
+    "message": "Backendové výrazy",
+    "description": "Sprout interface string."
+  },
+  "uiTermsHelp": {
+    "message": "Najčastejšie slová v tomto zozname. Klik jedno vyhodí. Nie je to objem hľadania.",
+    "description": "Sprout interface string."
+  },
+  "uiTitleLabel": {
+    "message": "Už je v titulku alebo odrážkach",
+    "description": "Sprout interface string."
+  },
+  "uiColStar": {
+    "message": "Hviezda",
+    "description": "Sprout interface string."
+  },
+  "uiColKeyword": {
+    "message": "Kľúčové slovo",
+    "description": "Sprout interface string."
+  },
+  "uiColPosition": {
+    "message": "Pozícia",
+    "description": "Sprout interface string."
+  },
+  "uiColResults": {
+    "message": "Výsledky Amazonu",
+    "description": "Sprout interface string."
+  },
+  "uiColMarkets": {
+    "message": "Trhy",
+    "description": "Sprout interface string."
+  },
+  "uiColFrom": {
+    "message": "Z",
+    "description": "Sprout interface string."
+  },
+  "uiColOpen": {
+    "message": "Otvoriť",
+    "description": "Sprout interface string."
+  },
+  "uiLinkAmazon": {
+    "message": "Amazon",
+    "description": "Sprout interface string."
+  },
+  "uiLinkGoogle": {
+    "message": "Google",
+    "description": "Sprout interface string."
+  },
+  "uiLinkTrends": {
+    "message": "Trends",
+    "description": "Sprout interface string."
+  },
+  "uiRate": {
+    "message": "Ohodnotiť Sprout",
+    "description": "Sprout interface string."
+  },
+  "uiNotNow": {
+    "message": "Teraz nie",
+    "description": "Sprout interface string."
+  },
+  "uiRateBody": {
+    "message": "Na tomto zariadení sú uložené tri dokončené behy. Hodnotenie v obchode pomôže ďalším predajcom nájsť Sprout. Táto poznámka sa už nezobrazí.",
+    "description": "Sprout interface string."
+  },
+  "uiBrands": {
+    "message": "Značky na tejto stránke",
+    "description": "Sprout interface string."
+  },
+  "uiNoBrand": {
+    "message": "Žiadna značka na tejto stránke nezodpovedá „$1“.",
+    "description": "Sprout interface string."
+  },
+  "uiUseTitle": {
+    "message": "Použiť titulok ako seed",
+    "description": "Sprout interface string."
+  },
+  "uiOneMore": {
+    "message": "Ešte jedna úroveň",
+    "description": "Sprout interface string."
+  },
+  "uiPageTerms": {
+    "message": "Výrazy zo stránky a súvisiace hľadania z tejto stránky Amazonu. Nie je to objem hľadania.",
+    "description": "Sprout interface string."
+  },
+  "uiEmptyStart": {
+    "message": "Zadajte seed. Sprout sa Amazonu opýta na tento prefix a potom na každé písmeno a číslicu — rovnaké návrhy, aké vidia zákazníci.",
+    "description": "Sprout interface string."
+  },
+  "uiStatusSaved": {
+    "message": "Uložené",
+    "description": "Sprout interface string."
+  },
+  "uiStatusFailed": {
+    "message": "Zlyhalo",
+    "description": "Sprout interface string."
+  },
+  "uiStatusStopped": {
+    "message": "Zastavené",
+    "description": "Sprout interface string."
+  },
+  "uiExpandSuggestions": {
+    "message": "Rozšíriť návrhy",
+    "description": "Sprout interface string."
+  },
+  "deptAll": {
+    "message": "Všetky oddelenia",
+    "description": "Sprout interface string."
+  },
+  "deptBooks": {
+    "message": "Knihy",
+    "description": "Sprout interface string."
+  },
+  "deptKindle": {
+    "message": "Kindle",
+    "description": "Sprout interface string."
+  },
+  "deptFashion": {
+    "message": "Móda",
+    "description": "Sprout interface string."
+  },
+  "deptElectronics": {
+    "message": "Elektronika",
+    "description": "Sprout interface string."
+  },
+  "deptGarden": {
+    "message": "Dom a záhrada",
+    "description": "Sprout interface string."
+  },
+  "deptKitchen": {
+    "message": "Kuchyňa",
+    "description": "Sprout interface string."
+  },
+  "deptToys": {
+    "message": "Hračky",
+    "description": "Sprout interface string."
+  },
+  "deptSports": {
+    "message": "Šport",
+    "description": "Sprout interface string."
+  },
+  "deptBeauty": {
+    "message": "Krása",
+    "description": "Sprout interface string."
+  },
+  "deptHealth": {
+    "message": "Zdravie",
+    "description": "Sprout interface string."
+  },
+  "deptOffice": {
+    "message": "Kancelária",
+    "description": "Sprout interface string."
+  }
+}

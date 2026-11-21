@@ -30,6 +30,25 @@ test('public pages use the busfyroman/sprout URL', () => {
   assert.ok(readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8').includes('sprout-*-cws.zip'))
 })
 
+test('locale catalogs fit the store name and description limits', () => {
+  const manifest = readFileSync(path.join(root, 'manifest.config.ts'), 'utf8')
+  assert.match(manifest, /default_locale: 'en'/)
+  assert.match(manifest, /__MSG_extName__/)
+  assert.match(manifest, /__MSG_extDescription__/)
+  for (const locale of ['en', 'de', 'es', 'fr', 'it', 'sk']) {
+    const messages = JSON.parse(readFileSync(path.join(root, 'public', '_locales', locale, 'messages.json'), 'utf8')) as {
+      extName: { message: string }
+      extDescription: { message: string }
+    }
+    assert.ok([...messages.extName.message].length <= 75, `${locale} name`)
+    assert.ok([...messages.extDescription.message].length <= 132, `${locale} description`)
+    if (locale === 'en') {
+      assert.equal(messages.extName.message, EXTENSION_NAME)
+      assert.equal(messages.extDescription.message, EXTENSION_DESCRIPTION)
+    }
+  }
+})
+
 test('the rating note waits for three finished runs and stays dismissed', () => {
   assert.equal(shouldShowRatePrompt(2, false), false)
   assert.equal(shouldShowRatePrompt(3, false), true)
