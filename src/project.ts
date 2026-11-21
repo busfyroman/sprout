@@ -1,7 +1,7 @@
 /**
  * Public URLs for Sprout. This is the only place the Chrome Web Store link is defined.
  * docs/index.html must use storeUrl as the Add to Chrome href. The release test checks that.
- * Replace pfldfgaedkbpgjmfblncbjdcmjcphnpk after the listing exists, and update that one href to match.
+ * Chrome Web Store listing URL; keep the href in docs/index.html in sync.
  */
 export const PROJECT = {
   repoUrl: 'https://github.com/busfyroman/sprout',
