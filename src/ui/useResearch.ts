@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { normalizeDepartment } from '../lib/departments'
 import { LOCK_STALE_MS, MAX_SEED_LENGTH } from '../lib/limits'
 import { deleteHistoryEntry, listHistory, listSaved, removeSaved, saveHistoryEntry, shouldRecordHistory, toggleSaved, LIBRARY_TICK } from '../lib/library'
 import { getMarketplace } from '../lib/marketplaces'
@@ -8,7 +9,7 @@ import { parseWordList } from '../lib/search-terms'
 import { hasChromeStorage, defaultState, isContextInvalidated, loadSettings, loadState, migrateLegacySeed, normalizeState, REOPEN_PANEL_MESSAGE, saveSettings, saveState, watchSettings, watchState, type SproutSettings } from '../lib/storage'
 import type { ExpandMode, SortKey, SproutState, Suggestion } from '../lib/types'
 
-export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: string }) {
+export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: string; pageDepartment?: string | null }) {
   const ownerId = useRef(crypto.randomUUID())
   const [state, setState] = useState<SproutState>(defaultState)
   const [ready, setReady] = useState(false)
@@ -137,15 +138,19 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
         const marketplaceId = getMarketplace(options.pageMarketplaceId).id
         next = { ...next, marketplaceId, selectedMarketplaceIds: [marketplaceId] }
       }
+      if (!lockFresh && options?.pageDepartment && next.departmentAlias === 'aps') {
+        next = { ...next, departmentAlias: normalizeDepartment(options.pageDepartment) }
+      }
       stateRef.current = next
       setState(next)
       readyRef.current = true
       setReady(true)
-      if (pageSeed || options?.pageMarketplaceId) {
+      if (pageSeed || options?.pageMarketplaceId || options?.pageDepartment) {
         void saveSettings({
           seed: next.seed,
           marketplaceId: next.marketplaceId,
           selectedMarketplaceIds: next.selectedMarketplaceIds,
+          departmentAlias: next.departmentAlias,
         })
       }
     })()
@@ -155,7 +160,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
       unwatchSettings()
       unwatchRun()
     }
-  }, [options?.pageMarketplaceId, options?.pageSeed])
+  }, [options?.pageDepartment, options?.pageMarketplaceId, options?.pageSeed])
 
   const runningHere = state.run?.status === 'running' && state.runLock?.ownerId === ownerId.current
   const lockedByOther = Boolean(
@@ -204,10 +209,18 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     persist({ ...stateRef.current, ...partial }, true)
   }, [persist])
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (override?: { seed?: string; depth?: number }) => {
     const current = stateRef.current
     if (current.run?.status === 'running' && current.runLock?.ownerId === ownerId.current) return
-    const seed = cleanSeed(current.seed)
+    const depth = override?.depth ?? 0
+    if (depth > 2) {
+      setNotice('Expand this stops at depth 2 so one phrase cannot crawl forever.')
+      return
+    }
+    const typed = cleanSeed(override?.seed ?? current.seed)
+    const seed = !override?.seed && current.useTranslatedSeed && current.translatedSeed.trim()
+      ? cleanSeed(current.translatedSeed)
+      : typed
     if (!seed) return
     const fresh = await loadState()
     if (
@@ -229,7 +242,7 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
     persist(
       {
         ...current,
-        seed,
+        seed: override?.seed ? seed : current.seed,
         marketplaceId: marketplace.id,
         selectedMarketplaceIds: uniqueIds,
         droppedSearchWords: [],
@@ -240,6 +253,9 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
           marketplaceIds: uniqueIds,
           mode: current.mode,
           includeSpace: current.includeSpace,
+          alias: current.kdpMode ? (current.departmentAlias === 'digital-text' ? 'digital-text' : 'stripbooks') : current.departmentAlias,
+          deep: current.deepExpand,
+          depth,
           suggestions: [],
           totalQueries: 0,
           finishedQueries: 0,
@@ -263,6 +279,9 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
         marketplaceIds: uniqueIds,
         mode: current.mode,
         includeSpace: current.includeSpace,
+        alias: current.kdpMode ? (current.departmentAlias === 'digital-text' ? 'digital-text' : 'stripbooks') : current.departmentAlias,
+        deep: current.deepExpand,
+        depth,
         signal: controller.signal,
         onProgress: (run) => {
           const latest = stateRef.current
@@ -331,6 +350,19 @@ export function useResearch(options?: { pageSeed?: string; pageMarketplaceId?: s
       applySettings({ droppedSearchWords: dropped })
     },
     clearDroppedSearchWords: () => applySettings({ droppedSearchWords: [] }),
+    setDepartmentAlias: (departmentAlias: string) => applySettings({ departmentAlias, kdpMode: departmentAlias === 'stripbooks' || departmentAlias === 'digital-text' ? stateRef.current.kdpMode : false }),
+    setDeepExpand: (deepExpand: boolean) => applySettings({ deepExpand }),
+    setKdpMode: (kdpMode: boolean) => applySettings({
+      kdpMode,
+      departmentAlias: kdpMode
+        ? (stateRef.current.departmentAlias === 'digital-text' ? 'digital-text' : 'stripbooks')
+        : stateRef.current.departmentAlias,
+    }),
+    setSubtitleText: (subtitleText: string) => applySettings({ subtitleText }),
+    setTranslatedSeed: (translatedSeed: string) => applySettings({ translatedSeed }),
+    setUseTranslatedSeed: (useTranslatedSeed: boolean) => applySettings({ useTranslatedSeed }),
+    setWordCountFilter: (wordCountFilter: SproutState['wordCountFilter']) => applySettings({ wordCountFilter }),
+    setPositionFilter: (positionFilter: SproutState['positionFilter']) => applySettings({ positionFilter }),
     toggleStar: async (item: Suggestion) => {
       if (!hasPro('savedKeywords')) return
       const saved = await toggleSaved({

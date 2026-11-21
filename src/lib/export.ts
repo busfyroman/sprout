@@ -1,3 +1,4 @@
+import { analysisRows } from './analysis'
 import type { Suggestion } from './types'
 import { buildXlsx } from './xlsx'
 
@@ -44,7 +45,9 @@ export function buildCsv(items: readonly Suggestion[], meta: ExportMeta): string
 }
 
 export function buildWorkbook(items: readonly Suggestion[], meta: ExportMeta): Uint8Array {
-  return buildXlsx(buildExportRows(items, meta))
+  return buildXlsx(buildExportRows(items, meta), 'Suggestions', [
+    { name: 'Word analysis', rows: analysisRows(items.map((item) => item.value)) },
+  ])
 }
 
 export function safeSpreadsheetText(value: string): string {

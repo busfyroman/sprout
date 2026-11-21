@@ -1,6 +1,7 @@
 import type { EndpointKind } from './endpoints'
 import { REQUEST_LIMITS } from './limits'
 import type { Marketplace } from './marketplaces'
+import { connectorWords } from './analysis'
 import { buildQueries, cleanSeed, type QuerySpec } from './queries'
 import { addSuggestion } from './results'
 import {
@@ -20,6 +21,9 @@ export interface ExpandInput {
   marketplace: Marketplace
   mode: ExpandMode
   includeSpace: boolean
+  alias?: string
+  deep?: boolean
+  depth?: number
   signal: AbortSignal
   onProgress: (run: RunSnapshot) => void
   client?: ClientContext
@@ -27,7 +31,9 @@ export interface ExpandInput {
 
 export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
   const seed = cleanSeed(input.seed)
-  const queries = buildQueries(seed, input.mode, input.includeSpace)
+  const alias = input.alias || 'aps'
+  const connectors = input.deep ? connectorWords(input.marketplace.locale) : []
+  const queries = buildQueries(seed, input.mode, input.includeSpace, Boolean(input.deep), connectors)
   const client = input.client ?? createClientContext()
   let snapshot = createRun(input, seed, queries.length)
 
@@ -49,7 +55,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
   emit(snapshot)
 
   try {
-    const probe = await probeSeed(input.marketplace, queries[0], input.signal, client)
+    const probe = await probeSeed(input.marketplace, queries[0], input.signal, client, alias)
     const suggestions = new Map<string, Suggestion>()
     addQuerySuggestions(suggestions, queries[0], probe.batch.values, input.marketplace.id)
     let endpoint: EndpointKind = probe.endpoint
@@ -99,7 +105,7 @@ export async function expandSeed(input: ExpandInput): Promise<RunSnapshot> {
       if (input.signal.aborted) throw new DOMException('The expansion was stopped.', 'AbortError')
       emit({ ...snapshot, recentLabel: query.label })
       try {
-        const batch = await fetchPreferred(input.marketplace, query.text, endpoint, input.signal, client)
+        const batch = await fetchPreferred(input.marketplace, query.text, endpoint, input.signal, client, alias)
         if (batch.endpoint !== endpoint) laterFallback = true
         addQuerySuggestions(suggestions, query, batch.values, input.marketplace.id)
       } catch (error) {
@@ -154,6 +160,9 @@ function createRun(input: ExpandInput, seed: string, totalQueries: number): RunS
     marketplaceIds: [input.marketplace.id],
     mode: input.mode,
     includeSpace: input.includeSpace,
+    alias: input.alias || 'aps',
+    deep: Boolean(input.deep),
+    depth: input.depth ?? 0,
     suggestions: [],
     totalQueries,
     finishedQueries: 0,
@@ -175,14 +184,15 @@ async function probeSeed(
   query: QuerySpec,
   signal: AbortSignal,
   client: ClientContext,
+  alias: string,
 ): Promise<{ endpoint: EndpointKind; batch: SuggestionBatch; usedFallback: boolean }> {
   try {
-    const primary = await fetchBatch(marketplace, query.text, 'completion', signal, client)
+    const primary = await fetchBatch(marketplace, query.text, 'completion', signal, client, alias)
     if (primary.values.length > 0) {
       return { endpoint: 'completion', batch: primary, usedFallback: false }
     }
     try {
-      const alternate = await fetchBatch(marketplace, query.text, 'storefront', signal, client)
+      const alternate = await fetchBatch(marketplace, query.text, 'storefront', signal, client, alias)
       if (alternate.values.length > 0) {
         return { endpoint: 'storefront', batch: alternate, usedFallback: true }
       }
@@ -193,7 +203,7 @@ async function probeSeed(
   } catch (primaryError) {
     if (isAbortError(primaryError)) throw primaryError
     try {
-      const alternate = await fetchBatch(marketplace, query.text, 'storefront', signal, client)
+      const alternate = await fetchBatch(marketplace, query.text, 'storefront', signal, client, alias)
       return { endpoint: 'storefront', batch: alternate, usedFallback: true }
     } catch (secondaryError) {
       if (isAbortError(secondaryError)) throw secondaryError
@@ -208,13 +218,14 @@ async function fetchPreferred(
   endpoint: EndpointKind,
   signal: AbortSignal,
   client: ClientContext,
+  alias: string,
 ): Promise<SuggestionBatch> {
   try {
-    return await fetchBatch(marketplace, prefix, endpoint, signal, client)
+    return await fetchBatch(marketplace, prefix, endpoint, signal, client, alias)
   } catch (error) {
     if (isAbortError(error)) throw error
     const other: EndpointKind = endpoint === 'completion' ? 'storefront' : 'completion'
-    return fetchBatch(marketplace, prefix, other, signal, client)
+    return fetchBatch(marketplace, prefix, other, signal, client, alias)
   }
 }
 

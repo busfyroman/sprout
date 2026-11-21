@@ -28,6 +28,10 @@ export function ResultsList({
   onToggle,
   onToggleVisible,
   onStar,
+  onExpand,
+  positionLabel,
+  resultLabel,
+  similar,
 }: {
   items: Suggestion[]
   total: number
@@ -43,6 +47,10 @@ export function ResultsList({
   onToggle: (key: string) => void
   onToggleVisible: (checked: boolean) => void
   onStar: (item: Suggestion) => void
+  onExpand?: (item: Suggestion) => void
+  positionLabel?: (item: Suggestion) => string
+  resultLabel?: (item: Suggestion) => string
+  similar?: (item: Suggestion) => boolean
 }) {
   const selectedVisible = items.filter((item) => selected.includes(item.key)).length
   const allChecked = items.length > 0 && selectedVisible === items.length
@@ -118,7 +126,24 @@ export function ResultsList({
                     >
                       <Star className={`h-3.5 w-3.5 ${saved ? 'fill-clay text-clay' : ''}`} />
                     </button>
-                    <span className="min-w-0 flex-1 truncate text-[13px]" title={item.value}>{item.value}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px]" title={item.value}>
+                      {item.value}
+                      {similar?.(item) ? <span className="ml-1 text-[10px] text-clay">similar</span> : null}
+                      {resultLabel?.(item) ? <span className="ml-1 text-[10px] text-muted">{resultLabel(item)}</span> : null}
+                    </span>
+                    {positionLabel ? <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted">{positionLabel(item)}</span> : null}
+                    {onExpand ? (
+                      <button
+                        type="button"
+                        className="shrink-0 text-[10px] text-moss"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          onExpand(item)
+                        }}
+                      >
+                        Expand this
+                      </button>
+                    ) : null}
                     {(showMarkets || markets.length > 1) && (
                       <span className="shrink-0 font-mono text-[10px] text-muted">
                         {markets.map((id) => getMarketplace(id).code).join(' ')}

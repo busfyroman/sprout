@@ -38,13 +38,21 @@ export function sanitizeRestoredSeed(value: string): string {
   return cleaned
 }
 
-export function countQueries(mode: ExpandMode, includeSpace: boolean): number {
+export function countQueries(mode: ExpandMode, includeSpace: boolean, deep = false, connectorCount = 6): number {
   const families = mode === 'both' ? 2 : 1
   const forms = includeSpace ? 2 : 1
-  return 1 + EXPAND_CHARS.length * families * forms
+  const base = 1 + EXPAND_CHARS.length * families * forms
+  if (!deep) return base
+  return base + connectorCount * (1 + 26)
 }
 
-export function buildQueries(seed: string, mode: ExpandMode, includeSpace: boolean): QuerySpec[] {
+export function buildQueries(
+  seed: string,
+  mode: ExpandMode,
+  includeSpace: boolean,
+  deep = false,
+  connectors: readonly string[] = [],
+): QuerySpec[] {
   const cleaned = cleanSeed(seed)
   if (!cleaned) return []
 
@@ -91,15 +99,45 @@ export function buildQueries(seed: string, mode: ExpandMode, includeSpace: boole
     }
   }
 
+  if (deep) {
+    for (const connector of connectors) {
+      const word = connector.trim()
+      if (!word) continue
+      queries.push({
+        id: `connector:${word}`,
+        label: word,
+        exportLabel: `connector ${word}`,
+        text: `${cleaned} ${word}`,
+        index: queries.length,
+      })
+      for (const letter of LETTERS) {
+        queries.push({
+          id: `connector:${word}:${letter}`,
+          label: `${word} ${letter}`,
+          exportLabel: `connector ${word} ${letter}`,
+          text: `${cleaned} ${word} ${letter}`,
+          index: queries.length,
+        })
+      }
+    }
+  }
+
   return queries
 }
 
-export function describePlan(seed: string, mode: ExpandMode, includeSpace: boolean): { count: number; example: string } {
+export function describePlan(
+  seed: string,
+  mode: ExpandMode,
+  includeSpace: boolean,
+  deep = false,
+  connectorCount = 6,
+): { count: number; example: string } {
   const shown = cleanSeed(seed) || 'yoga mat'
   const parts: string[] = []
   if (mode !== 'prefix') parts.push(`${shown}a`)
   if (mode !== 'prefix' && includeSpace) parts.push(`${shown} a`)
   if (mode !== 'suffix') parts.push(`a${shown}`)
   if (mode !== 'suffix' && includeSpace) parts.push(`a ${shown}`)
-  return { count: countQueries(mode, includeSpace), example: parts.join(' · ') }
+  if (deep) parts.push(`${shown} for a`)
+  return { count: countQueries(mode, includeSpace, deep, connectorCount), example: parts.join(' · ') }
 }

@@ -1,3 +1,4 @@
+import { normalizeDepartment } from './departments'
 import { DEFAULT_SEARCH_TERM_BYTES, LOCK_STALE_MS } from './limits'
 import { getMarketplace } from './marketplaces'
 import { isLegacyPlaceholderSeed, sanitizeRestoredSeed } from './queries'
@@ -17,6 +18,14 @@ export interface SproutSettings {
   listingText: string
   searchTermByteLimit: number
   droppedSearchWords: string[]
+  departmentAlias: string
+  deepExpand: boolean
+  kdpMode: boolean
+  subtitleText: string
+  translatedSeed: string
+  useTranslatedSeed: boolean
+  wordCountFilter: 'any' | '1' | '2' | '3+'
+  positionFilter: 'any' | 'before' | 'after' | 'between' | 'other'
 }
 
 export const STORAGE_KEY = 'sprout.v1'
@@ -41,6 +50,14 @@ export function defaultState(): SproutState {
     listingText: '',
     searchTermByteLimit: DEFAULT_SEARCH_TERM_BYTES,
     droppedSearchWords: [],
+    departmentAlias: 'aps',
+    deepExpand: false,
+    kdpMode: false,
+    subtitleText: '',
+    translatedSeed: '',
+    useTranslatedSeed: false,
+    wordCountFilter: 'any',
+    positionFilter: 'any',
   }
 }
 
@@ -111,6 +128,14 @@ export function normalizeState(raw: unknown): SproutState {
     listingText: typeof value.listingText === 'string' ? value.listingText : '',
     searchTermByteLimit: byteLimit,
     droppedSearchWords: Array.isArray(value.droppedSearchWords) ? parseWordList(value.droppedSearchWords.join('\n')) : [],
+    departmentAlias: normalizeDepartment(typeof value.departmentAlias === 'string' ? value.departmentAlias : 'aps'),
+    deepExpand: value.deepExpand === true,
+    kdpMode: value.kdpMode === true,
+    subtitleText: typeof value.subtitleText === 'string' ? value.subtitleText : '',
+    translatedSeed: typeof value.translatedSeed === 'string' ? value.translatedSeed : '',
+    useTranslatedSeed: value.useTranslatedSeed === true,
+    wordCountFilter: value.wordCountFilter === '1' || value.wordCountFilter === '2' || value.wordCountFilter === '3+' ? value.wordCountFilter : 'any',
+    positionFilter: value.positionFilter === 'before' || value.positionFilter === 'after' || value.positionFilter === 'between' || value.positionFilter === 'other' ? value.positionFilter : 'any',
     writerId: typeof value.writerId === 'string' ? value.writerId : undefined,
   }
 }
@@ -127,6 +152,14 @@ export function settingsFromState(state: SproutState): SproutSettings {
     listingText: state.listingText,
     searchTermByteLimit: state.searchTermByteLimit,
     droppedSearchWords: state.droppedSearchWords,
+    departmentAlias: state.departmentAlias,
+    deepExpand: state.deepExpand,
+    kdpMode: state.kdpMode,
+    subtitleText: state.subtitleText,
+    translatedSeed: state.translatedSeed,
+    useTranslatedSeed: state.useTranslatedSeed,
+    wordCountFilter: state.wordCountFilter,
+    positionFilter: state.positionFilter,
   }
 }
 
@@ -147,6 +180,14 @@ export function normalizeSettings(raw: unknown, fallback?: SproutSettings): Spro
       ? Math.min(1000, Math.max(20, Math.round(value.searchTermByteLimit)))
       : base.searchTermByteLimit,
     droppedSearchWords: Array.isArray(value.droppedSearchWords) ? parseWordList(value.droppedSearchWords.join('\n')) : base.droppedSearchWords,
+    departmentAlias: normalizeDepartment(typeof value.departmentAlias === 'string' ? value.departmentAlias : base.departmentAlias),
+    deepExpand: typeof value.deepExpand === 'boolean' ? value.deepExpand : base.deepExpand,
+    kdpMode: typeof value.kdpMode === 'boolean' ? value.kdpMode : base.kdpMode,
+    subtitleText: typeof value.subtitleText === 'string' ? value.subtitleText : base.subtitleText,
+    translatedSeed: typeof value.translatedSeed === 'string' ? value.translatedSeed : base.translatedSeed,
+    useTranslatedSeed: typeof value.useTranslatedSeed === 'boolean' ? value.useTranslatedSeed : base.useTranslatedSeed,
+    wordCountFilter: value.wordCountFilter === '1' || value.wordCountFilter === '2' || value.wordCountFilter === '3+' ? value.wordCountFilter : base.wordCountFilter,
+    positionFilter: value.positionFilter === 'before' || value.positionFilter === 'after' || value.positionFilter === 'between' || value.positionFilter === 'other' ? value.positionFilter : base.positionFilter,
   }
 }
 

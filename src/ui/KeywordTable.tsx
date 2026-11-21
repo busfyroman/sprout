@@ -28,6 +28,10 @@ export function KeywordTable({
   onToggle,
   onToggleVisible,
   onStar,
+  onExpand,
+  positionLabel,
+  resultLabel,
+  similar,
 }: {
   items: Suggestion[]
   total: number
@@ -42,6 +46,10 @@ export function KeywordTable({
   onToggle: (key: string) => void
   onToggleVisible: (checked: boolean) => void
   onStar: (item: Suggestion) => void
+  onExpand?: (item: Suggestion) => void
+  positionLabel?: (item: Suggestion) => string
+  resultLabel?: (item: Suggestion) => string
+  similar?: (item: Suggestion) => boolean
 }) {
   const selectedVisible = items.filter((item) => selected.includes(item.key)).length
   const allChecked = items.length > 0 && selectedVisible === items.length
@@ -83,6 +91,8 @@ export function KeywordTable({
               </th>
               <th className="w-8 px-1 py-2">Star</th>
               <th className="px-2 py-2 font-medium">Keyword</th>
+              <th className="px-2 py-2 font-medium">Position</th>
+              <th className="px-2 py-2 font-medium">Amazon results</th>
               <th className="px-2 py-2 font-medium">Markets</th>
               <th className="px-2 py-2 font-medium">From</th>
               <th className="px-2 py-2 font-medium">Open</th>
@@ -91,7 +101,7 @@ export function KeywordTable({
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted">{emptyLabel}</td>
+                <td colSpan={8} className="px-4 py-10 text-center text-sm text-muted">{emptyLabel}</td>
               </tr>
             ) : items.map((item) => {
               const markets = suggestionMarkets(item, fallbackMarketplaceId)
@@ -106,7 +116,15 @@ export function KeywordTable({
                       <Star className={`h-3.5 w-3.5 ${starred.includes(item.key) ? 'fill-clay text-clay' : ''}`} />
                     </button>
                   </td>
-                  <td className="max-w-md px-2 py-1.5 font-medium">{item.value}</td>
+                  <td className="max-w-md px-2 py-1.5 font-medium">
+                    {item.value}
+                    {similar?.(item) ? <span className="ml-1 text-[10px] text-clay">similar</span> : null}
+                    {onExpand ? (
+                      <button type="button" className="ml-2 text-[10px] text-moss" onClick={() => onExpand(item)}>Expand this</button>
+                    ) : null}
+                  </td>
+                  <td className="px-2 py-1.5 text-[11px] uppercase text-muted">{positionLabel?.(item) ?? ''}</td>
+                  <td className="px-2 py-1.5 text-[11px] text-muted" title="Amazon result count, not search volume">{resultLabel?.(item) ?? ''}</td>
                   <td className="px-2 py-1.5 text-[11px] text-muted">{markets.map((id) => getMarketplace(id).code).join(' ')}</td>
                   <td className="px-2 py-1.5 font-mono text-[10px] text-muted">{item.sources.slice(0, 4).map((source) => source.label).join(' ')}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 text-[11px]">

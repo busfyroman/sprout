@@ -1,3 +1,4 @@
+import { connectorWords } from './analysis'
 import { expandSeed, type ExpandInput } from './expand'
 import { countQueries } from './queries'
 import { getMarketplace, MARKETPLACES } from './marketplaces'
@@ -64,7 +65,8 @@ export async function expandSelectedMarketplaces(
     throw new ProRequiredError('multiMarketplace')
   }
   const selected = ids.length > 0 ? ids : [getMarketplace('us').id]
-  const perMarket = countQueries(input.mode, input.includeSpace)
+  const connectorCount = input.deep ? connectorWords(getMarketplace(selected[0] ?? 'us').locale).length : 0
+  const perMarket = countQueries(input.mode, input.includeSpace, Boolean(input.deep), connectorCount || 6)
   const combined = new Map<string, Suggestion>()
   const warnings: string[] = []
   let failedQueries = 0
@@ -82,6 +84,9 @@ export async function expandSelectedMarketplaces(
       marketplaceIds: selected,
       mode: input.mode,
       includeSpace: input.includeSpace,
+      alias: input.alias,
+      deep: input.deep,
+      depth: input.depth,
       suggestions: patch.suggestions,
       totalQueries: selected.length * perMarket,
       finishedQueries: patch.finishedQueries ?? 0,
@@ -112,6 +117,9 @@ export async function expandSelectedMarketplaces(
         marketplace,
         mode: input.mode,
         includeSpace: input.includeSpace,
+        alias: input.alias,
+        deep: input.deep,
+        depth: input.depth,
         signal: input.signal,
         client: input.client,
         onProgress: (run) => {

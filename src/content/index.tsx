@@ -2,6 +2,7 @@ import { Sprout } from 'lucide-react'
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { readMarketplace, readPageSeed } from '../lib/page-context'
+import { readPageIntel, type PageIntel } from '../lib/page-intel'
 import cssText from '../styles/globals.css?inline'
 import { App } from '../ui/App'
 
@@ -12,11 +13,18 @@ function currentSeed(): string {
   return readPageSeed(location.href, field?.value ?? '')
 }
 
+function liveDepartment(): string | null {
+  const box = document.querySelector<HTMLSelectElement>('#searchDropdownBox')
+  const alias = (box?.value ?? '').replace(/^search-alias=/, '').trim()
+  return alias || null
+}
+
 function Overlay() {
   const marketplace = readMarketplace(location.hostname)
   const [liveSeed, setLiveSeed] = useState(currentSeed)
   const [open, setOpen] = useState(false)
   const [sessionSeed, setSessionSeed] = useState<string | null>(null)
+  const [intel, setIntel] = useState<PageIntel>({ related: [], brands: [], productTitle: '', departmentAlias: null })
   const expanded = open && sessionSeed !== null
 
   useEffect(() => {
@@ -46,6 +54,7 @@ function Overlay() {
             surface="overlay"
             pageSeed={sessionSeed}
             pageMarketplaceId={marketplace?.id}
+            pageIntel={intel}
             onCollapse={() => setOpen(false)}
           />
         </div>
@@ -55,6 +64,8 @@ function Overlay() {
           type="button"
           onClick={() => {
             const seed = currentSeed()
+            const page = readPageIntel(document.documentElement.innerHTML)
+            setIntel({ ...page, departmentAlias: liveDepartment() ?? page.departmentAlias })
             setLiveSeed(seed)
             setSessionSeed((current) => current ?? seed)
             setOpen(true)

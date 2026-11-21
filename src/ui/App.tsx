@@ -1,13 +1,19 @@
 import { Copy, PanelRight, Sprout, Table2, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { adsCsv, classifyPosition, connectorWords, matchesWordCount, nearDuplicateKeys } from '../lib/analysis'
+import { DEPARTMENTS } from '../lib/departments'
 import { buildCsv, buildWorkbook, copyText, downloadBytes, downloadText, exportBasename, keywordsToCopy } from '../lib/export'
 import { getMarketplace, MARKETPLACES } from '../lib/marketplaces'
+import { readPageIntel, type PageIntel } from '../lib/page-intel'
+import { fetchResultCount, type ResultCount } from '../lib/result-count'
+import { languageFromLocale, translateOnDevice } from '../lib/translate'
 import { hasPro } from '../lib/pro'
 import { describePlan } from '../lib/queries'
 import { applyExclusions, filterSuggestions, sortSuggestions } from '../lib/results'
 import { parseWordList } from '../lib/search-terms'
 import type { ExpandMode } from '../lib/types'
 import { HistoryPanel, SavedPanel } from './LibraryPanels'
+import { KdpPanel, WordsPanel } from './ResearchPanels'
 import { KeywordTable } from './KeywordTable'
 import { ResultsList } from './ResultsList'
 import { SearchTermsPanel } from './SearchTermsPanel'
@@ -18,7 +24,7 @@ import { formatWhen } from './format'
 import { useResearch } from './useResearch'
 
 export type Surface = 'popup' | 'sidepanel' | 'overlay' | 'page'
-type PanelTab = 'results' | 'terms' | 'saved' | 'history'
+type PanelTab = 'results' | 'terms' | 'words' | 'kdp' | 'saved' | 'history'
 
 const MODES: Array<{ id: ExpandMode; label: string }> = [
   { id: 'suffix', label: 'Suffix' },
@@ -30,20 +36,33 @@ export function App({
   surface,
   pageSeed,
   pageMarketplaceId,
+  pageIntel,
   onCollapse,
 }: {
   surface: Surface
   pageSeed?: string
   pageMarketplaceId?: string
+  pageIntel?: PageIntel
   onCollapse?: () => void
 }) {
-  const research = useResearch({ pageSeed, pageMarketplaceId })
+  const research = useResearch({ pageSeed, pageMarketplaceId, pageDepartment: pageIntel?.departmentAlias })
   const [tab, setTab] = useState<PanelTab>('results')
   const [marketsOpen, setMarketsOpen] = useState(false)
   const [excludeDraft, setExcludeDraft] = useState('')
   const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
+  const [counts, setCounts] = useState<Record<string, ResultCount>>({})
+  const [counting, setCounting] = useState(false)
+  const [exactCount, setExactCount] = useState(false)
+  const [extraRelated, setExtraRelated] = useState<string[]>([])
+  const countRun = useRef(0)
   const { state, ready } = research
-  const plan = describePlan(state.seed, state.mode, state.includeSpace)
+  const plan = describePlan(
+    state.seed,
+    state.mode,
+    state.includeSpace,
+    state.deepExpand,
+    connectorWords(getMarketplace(state.selectedMarketplaceIds[0] ?? state.marketplaceId).locale).length,
+  )
   const run = state.run
   const suggestions = useMemo(
     () => applyExclusions(
@@ -53,10 +72,15 @@ export function App({
     [run, state.excludedWords],
   )
   const hiddenCount = (run?.suggestions.length ?? 0) - suggestions.length
+  const positionSeed = run?.seed || state.seed
   const filtered = useMemo(
-    () => sortSuggestions(filterSuggestions(suggestions, research.filter), state.sort),
-    [suggestions, research.filter, state.sort],
+    () => sortSuggestions(filterSuggestions(suggestions.filter((item) => (
+      matchesWordCount(item.value, state.wordCountFilter)
+      && (state.positionFilter === 'any' || classifyPosition(item.value, positionSeed) === state.positionFilter)
+    )), research.filter), state.sort),
+    [suggestions, research.filter, state.sort, state.wordCountFilter, state.positionFilter, positionSeed],
   )
+  const similarKeys = useMemo(() => nearDuplicateKeys(filtered.map((item) => item.value)), [filtered])
   const selectedItems = sortSuggestions(
     suggestions.filter((item) => research.selected.includes(item.key)),
     state.sort,
@@ -164,9 +188,95 @@ export function App({
   const tabs: Array<{ id: PanelTab; label: string; show: boolean }> = [
     { id: 'results', label: 'Results', show: true },
     { id: 'terms', label: 'Terms', show: hasPro('searchTerms') },
+    { id: 'words', label: 'Words', show: true },
+    { id: 'kdp', label: 'KDP', show: true },
     { id: 'saved', label: 'Saved', show: hasPro('savedKeywords') },
     { id: 'history', label: 'History', show: hasPro('history') },
   ]
+
+  function rowPosition(item: { value: string }): string {
+    return classifyPosition(item.value, positionSeed)
+  }
+
+  function rowCount(item: { key: string }): string {
+    const hit = counts[item.key]
+    if (!hit) return ''
+    if (hit.blocked) return 'check'
+    if (hit.count == null) return '—'
+    return `${hit.count.toLocaleString()} results`
+  }
+
+  function isSimilar(item: { value: string }): boolean {
+    return similarKeys.has(item.value.trim().replace(/\s+/g, ' ').toLowerCase())
+  }
+
+  async function countSelected() {
+    if (counting) {
+      countRun.current += 1
+      setCounting(false)
+      return
+    }
+    const starredRows = filtered.filter((item) => starred.includes(item.key))
+    const pool = (selectedItems.length > 0 ? selectedItems : starredRows).slice(0, 20)
+    if (pool.length === 0) {
+      research.setNotice('Select rows, or star some, then count Amazon results. The whole list stays uncounted on purpose.')
+      return
+    }
+    const token = countRun.current
+    const market = getMarketplace(run?.marketplaceIds?.[0] ?? state.marketplaceId)
+    setCounting(true)
+    let blocked = false
+    for (const item of pool) {
+      if (countRun.current !== token) break
+      const result = await fetchResultCount(market, item.value, exactCount, AbortSignal.timeout(12000))
+      if (countRun.current !== token) break
+      setCounts((current) => ({ ...current, [item.key]: result }))
+      if (result.blocked) {
+        research.setNotice(result.message)
+        blocked = true
+        break
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1100))
+    }
+    if (countRun.current === token) {
+      setCounting(false)
+      if (!blocked) research.setNotice('Finished reading Amazon result counts. This is a result count, not search volume.')
+    }
+  }
+
+  async function deepenRelated() {
+    const terms = pageIntel?.related ?? []
+    if (terms.length === 0) return
+    const host = location.hostname
+    const found = [...terms]
+    for (const term of terms.slice(0, 3)) {
+      try {
+        const response = await fetch(`https://${host}/s?k=${encodeURIComponent(term)}`, { credentials: 'include', cache: 'no-store' })
+        const html = await response.text()
+        if (/robot check|validatecaptcha|opfcaptcha/i.test(html)) {
+          research.setNotice('Amazon asked for a robot check. Related-search reading stopped.')
+          break
+        }
+        found.push(...readPageIntel(html).related)
+      } catch {
+        research.setNotice('Couldn’t read the next related-search page from this browser.')
+        break
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 1100))
+    }
+    setExtraRelated([...new Set(found)])
+  }
+
+  async function translateSeed() {
+    const market = getMarketplace(selectedMarkets[0] ?? state.marketplaceId)
+    const translated = await translateOnDevice(state.seed, 'en', languageFromLocale(market.locale))
+    if (!translated) {
+      research.setNotice('On-device translation isn’t in this browser. Type the local seed in the translated field, then expand it.')
+      return
+    }
+    research.setTranslatedSeed(translated)
+    research.setUseTranslatedSeed(true)
+  }
 
   return (
     <div className={`sprout-app ${frame}`}>
@@ -269,6 +379,81 @@ export function App({
           />
           Space
         </label>
+        <label className="flex items-center gap-2 text-xs text-ink">
+          <Switch
+            checked={state.deepExpand}
+            disabled={running}
+            onCheckedChange={(checked) => research.setDeepExpand(checked === true)}
+            aria-label="Deep expand with connector words"
+          />
+          Deep
+        </label>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-1.5 px-3">
+        <select
+          aria-label="Department"
+          value={state.kdpMode && state.departmentAlias !== 'digital-text' ? 'stripbooks' : state.departmentAlias}
+          disabled={running}
+          onChange={(event) => research.setDepartmentAlias(event.target.value)}
+          className="h-8 rounded-lg border border-line bg-cream px-2 text-xs"
+        >
+          {DEPARTMENTS.map((item) => (
+            <option key={item.id} value={item.id}>{item.label}</option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1.5 text-xs text-ink">
+          <Switch
+            checked={state.kdpMode}
+            disabled={running}
+            onCheckedChange={(checked) => research.setKdpMode(checked === true)}
+            aria-label="KDP books mode"
+          />
+          KDP
+        </label>
+        <select
+          aria-label="Word count"
+          value={state.wordCountFilter}
+          onChange={(event) => research.setWordCountFilter(event.target.value as typeof state.wordCountFilter)}
+          className="h-8 rounded-lg border border-line bg-cream px-2 text-xs"
+        >
+          <option value="any">Any length</option>
+          <option value="1">1 word</option>
+          <option value="2">2 words</option>
+          <option value="3+">3+ words</option>
+        </select>
+        <select
+          aria-label="Seed position"
+          value={state.positionFilter}
+          onChange={(event) => research.setPositionFilter(event.target.value as typeof state.positionFilter)}
+          className="h-8 rounded-lg border border-line bg-cream px-2 text-xs"
+        >
+          <option value="any">Any position</option>
+          <option value="before">Before seed</option>
+          <option value="after">After seed</option>
+          <option value="between">Between</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div className="mt-2 flex items-center gap-1.5 px-3">
+        <Input
+          value={state.translatedSeed}
+          disabled={running}
+          onChange={(event) => research.setTranslatedSeed(event.target.value)}
+          placeholder="Translated seed"
+          aria-label="Translated seed"
+          className="h-8 text-xs"
+        />
+        <Button type="button" size="sm" variant="outline" disabled={running || !state.seed.trim()} onClick={() => void translateSeed()}>Translate</Button>
+        <label className="flex shrink-0 items-center gap-1 text-[11px] text-ink">
+          <input
+            type="checkbox"
+            checked={state.useTranslatedSeed}
+            disabled={running}
+            onChange={(event) => research.setUseTranslatedSeed(event.target.checked)}
+            aria-label="Expand the translated seed"
+          />
+          Use
+        </label>
       </div>
       <p className="truncate px-3 pt-1.5 text-[11px] text-muted" title={plan.example}>
         <span className="tabular-nums">{selectedMarkets.length > 1 ? `${selectedMarkets.length} × ${plan.count}` : plan.count} prefixes</span>
@@ -355,6 +540,46 @@ export function App({
                 ))}
               </div>
             )}
+            {pageIntel && (pageIntel.brands.length > 0 || pageIntel.related.length > 0 || pageIntel.productTitle) && (
+              <div className="mt-2 space-y-1">
+                {pageIntel.productTitle && (
+                  <button type="button" className="text-[11px] text-moss" onClick={() => research.setSeed(pageIntel.productTitle)}>
+                    Use title as seed
+                  </button>
+                )}
+                {pageIntel.brands.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {pageIntel.brands.map((brand) => (
+                      <button
+                        key={brand}
+                        type="button"
+                        className="rounded-full border border-line px-2 py-0.5 text-[10px]"
+                        onClick={() => research.setExcludedWords([...state.excludedWords, brand])}
+                      >
+                        Exclude {brand}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {pageIntel.related.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    <button type="button" className="text-[10px] text-moss" onClick={() => void deepenRelated()}>One more level</button>
+                    {[...new Set([...pageIntel.related, ...extraRelated])].slice(0, 12).map((term) => (
+                      <button
+                        key={term}
+                        type="button"
+                        className="rounded-full bg-sand px-2 py-0.5 text-[10px]"
+                        onClick={() => research.setSeed(term)}
+                        title="Related search from this page, not a reverse ASIN lookup"
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-[10px] text-muted">Page terms and related searches from this Amazon page. They are not search volume.</p>
+              </div>
+            )}
           </form>
         )}
         {tab === 'results' && surface === 'page' && (
@@ -375,6 +600,10 @@ export function App({
               research.setSelected((current) => checked ? [...new Set([...current, ...visible])] : current.filter((key) => !visible.has(key)))
             }}
             onStar={(item) => void research.toggleStar(item)}
+            onExpand={(item) => void research.start({ seed: item.value, depth: (run?.depth ?? 0) + 1 })}
+            positionLabel={rowPosition}
+            resultLabel={rowCount}
+            similar={isSimilar}
           />
         )}
         {tab === 'results' && surface !== 'page' && (
@@ -396,6 +625,10 @@ export function App({
               research.setSelected((current) => checked ? [...new Set([...current, ...visible])] : current.filter((key) => !visible.has(key)))
             }}
             onStar={(item) => void research.toggleStar(item)}
+            onExpand={(item) => void research.start({ seed: item.value, depth: (run?.depth ?? 0) + 1 })}
+            positionLabel={rowPosition}
+            resultLabel={rowCount}
+            similar={isSimilar}
           />
         )}
         {tab === 'terms' && (
@@ -409,6 +642,22 @@ export function App({
             onByteLimit={research.setSearchTermByteLimit}
             onDrop={research.dropSearchWord}
             onClearDropped={research.clearDroppedSearchWords}
+          />
+        )}
+        {tab === 'words' && (
+          <WordsPanel phrases={filtered.map((item) => item.value)} onFilter={(text) => { research.setFilter(text); setTab('results') }} />
+        )}
+        {tab === 'kdp' && (
+          <KdpPanel
+            phrases={suggestions.map((item) => item.value)}
+            titleText={state.listingText}
+            subtitleText={state.subtitleText}
+            onSubtitle={research.setSubtitleText}
+            kind={state.departmentAlias === 'digital-text' ? 'digital-text' : 'stripbooks'}
+            onKind={(kind) => {
+              research.setKdpMode(true)
+              research.setDepartmentAlias(kind)
+            }}
           />
         )}
         {tab === 'saved' && <SavedPanel items={state.savedKeywords} onRemove={(id) => void research.removeSaved(id)} />}
@@ -425,13 +674,32 @@ export function App({
       </div>
 
       <footer className="relative z-10 shrink-0 border-t border-line bg-cream px-3 py-2.5">
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Button type="button" size="sm" onClick={() => void onCopy()} disabled={exportCount === 0} className={copyState === 'done' ? 'bg-moss hover:bg-moss' : ''}>
             <Copy className="h-3.5 w-3.5" aria-hidden />
             {copyLabel}
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => download('csv')} disabled={exportCount === 0 || !run}>CSV</Button>
           <Button type="button" size="sm" variant="outline" onClick={() => download('xlsx')} disabled={exportCount === 0 || !run}>XLSX</Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={exportCount === 0}
+            onClick={() => {
+              const text = adsCsv(exportItems.map((item) => item.value), state.seed || 'Sprout', state.seed || 'Sprout', 'Exact')
+              downloadText(`${exportBasename(state.seed || 'sprout', 'ads')}-ads.csv`, text, 'text/csv;charset=utf-8')
+            }}
+          >
+            Ads
+          </Button>
+          <label className="flex items-center gap-1 text-[10px] text-muted">
+            <input type="checkbox" checked={exactCount} onChange={(event) => setExactCount(event.target.checked)} aria-label="Count exact quoted matches" />
+            Quotes
+          </label>
+          <Button type="button" size="sm" variant="ghost" className="px-2" onClick={() => void countSelected()}>
+            {counting ? 'Stop count' : 'Results'}
+          </Button>
           {surface !== 'page' && (
             <Button type="button" size="sm" variant="ghost" className="ml-auto px-2" onClick={() => void openTable()}>
               <Table2 className="h-3.5 w-3.5" aria-hidden />
@@ -447,7 +715,7 @@ export function App({
         </div>
         <p className="mt-1.5 text-[10px] leading-snug text-muted">
           {selectedItems.length > 0 ? 'Copy and export use the checked rows.' : 'Copy and export use the visible list.'}
-          {' '}Everything stays in this browser.
+          {' '}Amazon results is a page count, not search volume. Everything stays in this browser.
         </p>
       </footer>
     </div>

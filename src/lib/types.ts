@@ -23,6 +23,9 @@ export interface RunSnapshot {
   marketplaceId: string
   mode: ExpandMode
   includeSpace: boolean
+  alias?: string
+  deep?: boolean
+  depth?: number
   suggestions: Suggestion[]
   totalQueries: number
   finishedQueries: number
@@ -78,5 +81,13 @@ export interface SproutState {
   listingText: string
   searchTermByteLimit: number
   droppedSearchWords: string[]
+  departmentAlias: string
+  deepExpand: boolean
+  kdpMode: boolean
+  subtitleText: string
+  translatedSeed: string
+  useTranslatedSeed: boolean
+  wordCountFilter: 'any' | '1' | '2' | '3+'
+  positionFilter: 'any' | 'before' | 'after' | 'between' | 'other'
   writerId?: string
 }

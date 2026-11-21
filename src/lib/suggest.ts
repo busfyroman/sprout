@@ -170,9 +170,10 @@ export async function fetchBatch(
   endpoint: EndpointKind,
   signal: AbortSignal,
   ctx: ClientContext,
+  alias = 'aps',
 ): Promise<SuggestionBatch> {
   const host = endpointHost(marketplace, endpoint)
-  const url = suggestionUrl(marketplace, prefix, endpoint)
+  const url = suggestionUrl(marketplace, prefix, endpoint, alias)
   let lastError: AmazonSuggestError | null = null
 
   for (let attempt = 0; attempt < ctx.retries; attempt++) {

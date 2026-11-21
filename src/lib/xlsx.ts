@@ -1,13 +1,47 @@
-export function buildXlsx(rows: readonly (readonly string[])[], sheetName = 'Suggestions'): Uint8Array {
+export function buildXlsx(
+  rows: readonly (readonly string[])[],
+  sheetName = 'Suggestions',
+  extraSheets: ReadonlyArray<{ name: string; rows: readonly (readonly string[])[] }> = [],
+): Uint8Array {
+  const sheets = [{ name: sheetName, rows }, ...extraSheets.map((sheet, index) => ({ name: sheet.name, rows: sheet.rows, index: index + 2 }))]
+  const sheetFiles = sheets.map((sheet, index) => ({
+    name: `xl/worksheets/sheet${index + 1}.xml`,
+    data: text(sheetXml(sheet.rows)),
+  }))
   const files: Array<{ name: string; data: Uint8Array }> = [
-    { name: '[Content_Types].xml', data: text(CONTENT_TYPES) },
+    { name: '[Content_Types].xml', data: text(contentTypes(sheets.length)) },
     { name: '_rels/.rels', data: text(ROOT_RELS) },
-    { name: 'xl/workbook.xml', data: text(workbookXml(sheetName)) },
-    { name: 'xl/_rels/workbook.xml.rels', data: text(WORKBOOK_RELS) },
+    { name: 'xl/workbook.xml', data: text(workbookXml(sheets.map((sheet) => sheet.name))) },
+    { name: 'xl/_rels/workbook.xml.rels', data: text(workbookRels(sheets.length)) },
     { name: 'xl/styles.xml', data: text(STYLES) },
-    { name: 'xl/worksheets/sheet1.xml', data: text(sheetXml(rows)) },
+    ...sheetFiles,
   ]
   return zipStore(files)
+}
+
+function contentTypes(count: number): string {
+  const overrides = Array.from({ length: count }, (_, index) => (
+    `<Override PartName="/xl/worksheets/sheet${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`
+  )).join('')
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+    `<Default Extension="xml" ContentType="application/xml"/>` +
+    `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+    overrides +
+    `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+    `</Types>`
+}
+
+function workbookRels(count: number): string {
+  const sheets = Array.from({ length: count }, (_, index) => (
+    `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${index + 1}.xml"/>`
+  )).join('')
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    sheets +
+    `<Relationship Id="rId${count + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
+    `</Relationships>`
 }
 
 function sheetXml(rows: readonly (readonly string[])[]): string {
@@ -28,10 +62,13 @@ function sheetXml(rows: readonly (readonly string[])[]): string {
     `<sheetData>${body}</sheetData></worksheet>`
 }
 
-function workbookXml(sheetName: string): string {
+function workbookXml(names: string[]): string {
+  const sheets = names.map((name, index) => (
+    `<sheet name="${xmlAttr(safeSheetName(name))}" sheetId="${index + 1}" r:id="rId${index + 1}"/>`
+  )).join('')
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
     `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-    `<sheets><sheet name="${xmlAttr(safeSheetName(sheetName))}" sheetId="1" r:id="rId1"/></sheets></workbook>`
+    `<sheets>${sheets}</sheets></workbook>`
 }
 
 function safeSheetName(name: string): string {
@@ -67,24 +104,9 @@ function text(value: string): Uint8Array {
   return encoder.encode(value)
 }
 
-const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-  `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
-  `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
-  `<Default Extension="xml" ContentType="application/xml"/>` +
-  `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
-  `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
-  `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
-  `</Types>`
-
 const ROOT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
   `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
   `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
-  `</Relationships>`
-
-const WORKBOOK_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-  `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-  `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
-  `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` +
   `</Relationships>`
 
 const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +

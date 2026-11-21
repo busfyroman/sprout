@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { chromium } from 'playwright'
 
@@ -78,6 +78,30 @@ try {
   await page.screenshot({ path: '/opt/cursor/artifacts/sprout-results.png' })
   console.log('us expand ok')
 
+  await page.getByRole('tab', { name: 'Words' }).click()
+  await page.getByRole('heading', { name: 'Word analysis' }).waitFor()
+  await shot(page, 'sprout-word-analysis.png')
+  await page.getByRole('tab', { name: 'Results' }).click()
+  await page.getByLabel('Department').selectOption('stripbooks')
+  await shot(page, 'sprout-department.png')
+  await page.getByLabel('Department').selectOption('aps')
+  await page.getByRole('tab', { name: 'KDP' }).click()
+  await page.getByRole('heading', { name: 'KDP keyword boxes' }).waitFor()
+  await shot(page, 'sprout-kdp.png')
+  await page.getByRole('tab', { name: 'Results' }).click()
+  await page.getByRole('checkbox', { name: /^Select / }).first().click()
+  await page.getByRole('button', { name: 'Results', exact: true }).click()
+  await page.waitForFunction(() => {
+    const text = document.body.innerText
+    return /Finished reading Amazon result counts|robot check|did not show a result count|Couldn’t read the result count/i.test(text)
+  }, { timeout: 25000 })
+  await shot(page, 'sprout-result-counts.png')
+  const countText = await page.locator('body').innerText()
+  if (/search volume/i.test(countText) && !/not search volume/i.test(countText)) {
+    throw new Error('Result count was labeled as search volume')
+  }
+  console.log('views ok', /robot check/i.test(countText) ? 'captcha' : 'count')
+
   await page.getByLabel('Filter suggestions').fill('thick')
   await page.waitForTimeout(200)
   const filtered = await page.locator('body').innerText()
@@ -130,6 +154,7 @@ try {
   await xlsx.saveAs(xlsxPath)
   const xlsxBytes = readFileSync(xlsxPath)
   if (xlsxBytes[0] !== 0x50 || xlsxBytes[1] !== 0x4b) throw new Error('XLSX is not a zip')
+  if (!xlsxBytes.toString('latin1').includes('Word analysis')) throw new Error('XLSX is missing the Word analysis sheet')
   console.log('exports ok')
 
   await page.getByRole('tab', { name: 'History' }).click()
@@ -153,7 +178,7 @@ try {
   await page.locator('label', { hasText: 'DE · amazon.de' }).locator('input').check()
   await page.getByRole('button', { name: 'US + 1' }).waitFor()
   await page.getByRole('switch', { name: 'Insert a space before the extra letter' }).click()
-  await page.getByRole('button', { name: /Expand/ }).click()
+  await page.locator('form').getByRole('button', { name: /^Expand/ }).click()
   await page.getByRole('button', { name: 'Stop' }).waitFor({ timeout: 10000 })
   await waitForResults(page, 'multi')
   const tagged = await page.locator('li').allInnerTexts()
@@ -205,9 +230,48 @@ try {
     return control?.getAttribute('aria-checked') === next
   }, expected, { timeout: 10000 })
   console.log('pill space sync ok', beforeSync, '->', beforeSync === 'true' ? 'false' : 'true')
+
+  await page.bringToFront()
+  await page.getByRole('tab', { name: 'Results' }).click()
+  await openMarkets(page)
+  await page.locator('label', { hasText: 'IN · amazon.in' }).locator('input').check()
+  await page.locator('label', { hasText: 'US · amazon.com' }).locator('input').uncheck()
+  await page.locator('label', { hasText: 'DE · amazon.de' }).locator('input').uncheck()
+  await page.getByRole('button', { name: /IN · amazon\.in/ }).waitFor()
+  const space = page.getByRole('switch', { name: 'Insert a space before the extra letter' })
+  if (await space.getAttribute('aria-checked') === 'true') await space.click()
+  await page.getByLabel('Department').selectOption('aps')
+  await seed.fill('yoga mat')
+  await page.getByRole('button', { name: 'Expand', exact: true }).click()
+  await page.getByRole('button', { name: 'Stop' }).waitFor({ timeout: 10000 })
+  await waitForResults(page, 'amazon.in')
+
+  await openMarkets(page)
+  await page.locator('label', { hasText: 'US · amazon.com' }).locator('input').check()
+  await page.locator('label', { hasText: 'IN · amazon.in' }).locator('input').uncheck()
+  await page.getByLabel('Department').selectOption('stripbooks')
+  await page.getByRole('switch', { name: 'KDP books mode' }).click()
+  await seed.fill('yoga')
+  await page.getByRole('button', { name: 'Expand', exact: true }).click()
+  await page.getByRole('button', { name: 'Stop' }).waitFor({ timeout: 10000 })
+  await waitForResults(page, 'books')
+  await page.getByRole('tab', { name: 'KDP' }).click()
+  await page.getByText('/50').first().waitFor()
+  await shot(page, 'sprout-kdp-books.png')
   console.log('browser check passed')
 } finally {
   await context.close()
+}
+
+async function openMarkets(page) {
+  const button = page.locator('button[aria-expanded]')
+  if (await button.getAttribute('aria-expanded') !== 'true') await button.click()
+}
+
+async function shot(page, name) {
+  const target = `/opt/cursor/artifacts/${name}`
+  await page.screenshot({ path: target })
+  copyFileSync(target, path.join(root, 'docs', name))
 }
 
 async function waitForResults(page, label) {
@@ -215,11 +279,12 @@ async function waitForResults(page, label) {
     const text = document.body.innerText
     const stop = [...document.querySelectorAll('button')].some((button) => button.textContent?.trim() === 'Stop')
     const count = text.match(/(\d+) keywords/)
-    return !stop && count != null && Number(count[1]) > 0
-  }, { timeout: 180000 })
+    const failed = /Couldn’t load suggestions|internal error|unexpected error/i.test(text)
+    return failed || (!stop && count != null && Number(count[1]) > 0)
+  }, undefined, { timeout: 180000 })
   const text = await page.locator('body').innerText()
   if (/Couldn’t load suggestions|internal error|unexpected error/i.test(text)) {
-    throw new Error(`${label} expand failed:\n${text.slice(0, 700)}`)
+    throw new Error(`${label} expand failed:\n${text.slice(0, 900)}`)
   }
   console.log(label, 'keywords', text.match(/(\d+) keywords/)?.[1])
 }

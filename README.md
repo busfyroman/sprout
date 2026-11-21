@@ -57,7 +57,7 @@ Chrome is the same flow at `chrome://extensions`.
 
 Default pass: the seed, then the seed with each `a–z` and `0–9` glued on (`yoga mata`), and the same letters after a space (`yoga mat a`). Prefix mode does `ayoga mat` and `a yoga mat`. Both runs every form. Turn **Space** off to cut the request count roughly in half.
 
-Results are deduped. Each row shows which expansions produced it (`seed`, `+a`, `+ a`). Filter, sort, star, select, then copy as newline-separated keywords, or download CSV or XLSX. The last seed, marketplace, options, and result list are stored in `chrome.storage.local`. Saved keywords and finished runs are stored in IndexedDB on this device. There is no Sprout account and no Sprout server.
+Results are deduped. Each row shows which expansions produced it (`seed`, `+a`, `+ a`), whether the seed sits before, after, or between the other words, and a “similar” mark when a neighbor looks like a typo. Filter, sort, star, select, then copy as newline-separated keywords, or download CSV, XLSX (a second sheet is Word analysis), or an Amazon Ads bulk-sheet CSV (`Campaign`, `Ad Group`, `Keyword`, `Match Type`). The last seed, marketplace, options, result list, stars, and the last 20 runs are stored in `chrome.storage.local` on this device. There is no Sprout account and no Sprout server.
 
 ### Search terms, exclusions, stars, batch, history
 
@@ -67,6 +67,19 @@ Results are deduped. Each row shows which expansions produced it (`seed`, `+a`, 
 - **Several marketplaces.** Open the marketplace button and check more than one. One Expand runs the same seed on each, and rows are tagged with the marketplace codes.
 - **History.** The last 20 finished runs can be reopened and exported again.
 - **Keyword table.** Table (or the extension’s options page) opens a full page: sort, filter, and a link from each row to that keyword on Amazon, Google, and Google Trends. Sprout does not invent search volume or CPC.
+
+### Departments, depth, words, KDP, and counts (0.3.0)
+
+- **Department.** The picker sends Amazon’s search alias (`aps`, `stripbooks` for Books, `digital-text` for Kindle, Fashion, Electronics, and the rest of the list). On an Amazon page, the first open uses `#searchDropdownBox` when you have not chosen a department yet.
+- **Deep.** Adds connector words (`for`, `with`, `and`, `without`, `vs`, `under`, or the local equivalents) and a letter after each. **Expand this** on a row starts a new run from that phrase, at most two steps past the original seed. Stop still cancels the queue.
+- **Words.** Unigram and bigram counts with stop words removed. Click a word to filter the list. The same table is the second XLSX sheet. Counts are how often the word appears in these suggestions.
+- **Position and length.** Filter to before / after / between / other, and to 1 word, 2 words, or 3+ words.
+- **KDP.** Forces Books or Kindle, then fills seven boxes of 50 characters. Words from the title and subtitle are skipped, and a word is not reused across boxes.
+- **Amazon results.** Counts search-page results for checked rows, or starred rows if none are checked, about one page per second. Optional quotes ask for an exact phrase. The label says result count, not search volume. A robot check stops the queue and tells you.
+- **Page terms.** On a search page, related searches are chips you can use as a seed. **One more level** reads up to three of those pages. On a product page, **Use title as seed** copies the title. Store names are exclude chips; nothing is hidden until you click.
+- **Translate.** **Translate** tries Chrome’s on-device Translator. If that API is missing, type the local seed yourself. **Use** expands the translated field on the marketplace you picked, and the original stays in the seed box.
+
+`completion.amazon.in` still answers HTTP 502. Sprout uses `www.amazon.in/suggestions` for India. The other listed marketplaces returned suggestion JSON from `completion.<domain>` on 21 Nov 2026, including Japan, Brazil, Turkey, Ireland, Egypt, and Saudi Arabia. Electronics on amazon.com returned a short list; the JSON was valid.
 
 Requests go out three at a time, with a short gap, and retry on rate limits and 5xx responses with backoff. If `completion.amazon.<domain>` fails or returns a body that is not suggestion JSON, Sprout retries that prefix on `www.amazon.<domain>/suggestions` and says so in the panel. An empty list for an obscure prefix is a normal answer, not an error. If the seed itself fails on both hosts, the panel names both hosts and the HTTP status instead of showing a blank success.
 
@@ -87,7 +100,7 @@ A full US suffix + space run of `yoga mat` that day finished 73/73 prefixes with
 
 ### Feature flags
 
-`src/lib/pro.ts` exports `CURRENT_ENTITLEMENTS`. Every flag is on: multi-marketplace, history, search terms, saved keywords, and exclusions. There is no license check. Set a flag to `false` later if a build should hide that feature; callers already use `hasPro`. The department `alias` argument on `suggestionUrl` defaults to `aps` (all departments).
+`src/lib/pro.ts` exports `CURRENT_ENTITLEMENTS`. Every flag is on: multi-marketplace, history, search terms, saved keywords, and exclusions. There is no license check. Set a flag to `false` later if a build should hide that feature; callers already use `hasPro`. Department scope is the `alias` argument on `suggestionUrl` (`aps` by default, or `stripbooks`, `digital-text`, and the other aliases in `src/lib/departments.ts`).
 
 ## Slovenčina
 
@@ -142,7 +155,7 @@ V Chrome je postup rovnaký na `chrome://extensions`.
 
 Predvolený beh: samotný seed, potom seed s prilepeným `a–z` a `0–9` (`yoga mata`) a tie isté znaky za medzerou (`yoga mat a`). Režim Prefix robí `ayoga mat` a `a yoga mat`. Both spustí všetky tvary. Vypnutím **Space** zhruba o polovicu klesne počet požiadaviek.
 
-Výsledky sú bez duplicít. Pri každom riadku je vidno, ktoré rozšírenie ho prinieslo (`seed`, `+a`, `+ a`). Dá sa filtrovať, triediť, označiť hviezdičkou a skopírovať ako kľúčové slová oddelené novým riadkom, alebo stiahnuť CSV a XLSX. Posledný seed, trhovisko, voľby a zoznam ostanú v `chrome.storage.local`. Uložené kľúčové slová a dokončené behy sú v IndexedDB v tomto prehliadači. Sprout nemá účet ani vlastný server.
+Výsledky sú bez duplicít. Pri každom riadku je vidno, ktoré rozšírenie ho prinieslo (`seed`, `+a`, `+ a`), či seed stojí pred, za alebo medzi ostatnými slovami, a značku „similar“, keď sused vyzerá ako preklep. Dá sa filtrovať, triediť, označiť hviezdičkou a skopírovať ako kľúčové slová oddelené novým riadkom, alebo stiahnuť CSV, XLSX (druhý hárok je Word analysis) a CSV pre Amazon Ads (`Campaign`, `Ad Group`, `Keyword`, `Match Type`). Posledný seed, trhovisko, voľby, zoznam, hviezdičky a posledných 20 behov ostanú v `chrome.storage.local` v tomto prehliadači. Sprout nemá účet ani vlastný server.
 
 ### Search terms, vylúčenia, hviezdičky, viac trhovísk, história
 
@@ -152,6 +165,19 @@ Výsledky sú bez duplicít. Pri každom riadku je vidno, ktoré rozšírenie ho
 - **Viac trhovísk.** Otvor tlačidlo trhoviska a zaškrtni viac ako jedno. Jeden Expand spustí ten istý seed na každom a riadky označí kódom trhoviska.
 - **História.** Posledných 20 dokončených behov sa dá znova otvoriť a exportovať.
 - **Tabuľka.** Table (alebo stránka možností rozšírenia) otvorí celú stránku: triedenie, filter a odkaz z každého riadku na Amazon, Google a Google Trends. Sprout nevymýšľa hľadanosť ani CPC.
+
+### Oddelenia, hĺbka, slová, KDP a počty (0.3.0)
+
+- **Oddelenie.** Výber posiela Amazon alias (`aps`, `stripbooks` pre knihy, `digital-text` pre Kindle, móda, elektronika a ďalšie). Na stránke Amazonu sa pri prvom otvorení použije `#searchDropdownBox`, kým oddelenie nezmeníte.
+- **Deep.** Pridá spojky (`for`, `with`, `and`, `without`, `vs`, `under` alebo miestne tvary) a písmeno za každou. **Expand this** na riadku spustí nový beh z toho slovného spojenia, najviac dva kroky od pôvodného seedu. Stop rad zruší.
+- **Words.** Počty slov a dvojíc bez stop slov. Klik na slovo filtruje zoznam. Tá istá tabuľka je druhý hárok XLSX. Počet je výskyt v týchto návrhoch.
+- **Pozícia a dĺžka.** Filter before / after / between / other a 1 slovo, 2 slová alebo 3+ slov.
+- **KDP.** Vynúti Books alebo Kindle a naplní sedem polí po 50 znakoch. Slová z titulku a podtitulku vynechá a slovo sa v poliach neopakuje.
+- **Amazon results.** Spočíta výsledky vyhľadávacej stránky pre zaškrtnuté riadky, alebo pre hviezdičky, keď nie je nič zaškrtnuté, zhruba jedna stránka za sekundu. Úvodzovky pýtajú presnú frázu. Štítok hovorí počet výsledkov, nie objem hľadania. Kontrola robota rad zastaví a napíše prečo.
+- **Výrazy zo stránky.** Na vyhľadávaní sú súvisiace hľadania čipy, ktoré viete použiť ako seed. **One more level** prečíta najviac tri z tých stránok. Na produkte **Use title as seed** vezme titulok. Názvy obchodov sú čipy na vylúčenie; nič sa neskryje, kým nekliknete.
+- **Preklad.** **Translate** skúsi prekladač v Chrome, ktorý beží v zariadení. Keď API nie je, lokálny seed napíšte sami. **Use** rozšíri preložené pole na zvolenom trhovisku a pôvodný text ostane v poli seed.
+
+`completion.amazon.in` stále vracia HTTP 502. Pre Indiu Sprout použije `www.amazon.in/suggestions`. Ostatné uvedené trhoviská 21. novembra 2026 vrátili JSON návrhov z `completion.<doména>`, vrátane Japonska, Brazílie, Turecka, Írska, Egypta a Saudskej Arábie. Elektronika na amazon.com vrátila krátky zoznam; JSON bol platný.
 
 Požiadavky idú po troch, s krátkou medzerou, a pri obmedzení rýchlosti alebo odpovedi 5xx sa opakujú s odstupom. Keď `completion.amazon.<doména>` zlyhá alebo nevráti JSON návrhov, Sprout ten istý prefix skúsi na `www.amazon.<doména>/suggestions` a v paneli to napíše. Prázdny zoznam pri nezvyčajnom prefixe je normálna odpoveď, nie chyba. Ak zlyhá aj samotný seed na oboch hostiteľoch, panel uvedie oba hostiteľov a HTTP stav namiesto prázdneho úspechu.
 
@@ -172,3 +198,11 @@ Súkromie: [PRIVACY.md](PRIVACY.md). Návrh textu do Chrome Web Store: [STORE_LI
 ![Backend search terms at 248 of 249 bytes. Yoga and mat are left out because they are already in the title.](docs/sprout-search-terms.png)
 
 ![Keyword table with marketplace tags and links to Amazon, Google, and Google Trends.](docs/sprout-table.png)
+
+![Department picker set to Books.](docs/sprout-department.png)
+
+![Word analysis of the current suggestion list.](docs/sprout-word-analysis.png)
+
+![Seven KDP keyword boxes.](docs/sprout-kdp.png)
+
+![Amazon result counts on selected rows. The label is a result count, not search volume.](docs/sprout-result-counts.png)
